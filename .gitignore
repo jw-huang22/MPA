@@ -1,0 +1,13 @@
+data/
+
+evaluate_results/
+
+results*
+
+utils/_*
+
+condaenv*
+
+aborted/
+
+tmp/
