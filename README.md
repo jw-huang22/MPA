@@ -1,5 +1,10 @@
-# GoA-develop
+# Game of Arrows: On the (In-)Security of Weight Obfuscation for On-Device TEE-Shielded LLM Partition Algorithms
 
+## Overview
+This repository contains the code for the paper "Game of Arrows: On the (In-)Security of Weight Obfuscation for On-Device TEE-Shielded LLM Partition Algorithms". 
+
+### Remarks
+The experiments were conducted on 2 × NVIDIA A6000 GPUs (48GB)
 
 ## Environment Setup
 Note that different library version may affect test results. 
