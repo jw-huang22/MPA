@@ -17,6 +17,9 @@ export HF_ENDPOINT="https://hf-mirror.com"
 ./install1.sh
 
 conda activate game-of-arrows1
+
+# Basic Test for environment1
+./scripts2/basic_test1.sh
 ```
 
 For ViT:
@@ -27,6 +30,8 @@ export HF_ENDPOINT="https://hf-mirror.com"
 
 conda activate game-of-arrows2
 
+# Basic Test for environment1
+./scripts2/basic_test1.sh
 ```
 
 
