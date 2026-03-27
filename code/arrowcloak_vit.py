@@ -70,7 +70,7 @@ set_seed()
 print("recover_data prepared!")
 
 
-if os.path.exists(f"{args.restore_dir}/ckpt.t7"):
+if os.path.exists(f"{args.restore_dir}/ckpt.t7") and False:
     final_model = timm.create_model("vit_base_patch16_224", pretrained=True, num_classes=num_classes)
     checkpoint = torch.load(f"{args.restore_dir}/ckpt.t7")
     final_model.load_state_dict(checkpoint)
@@ -78,12 +78,20 @@ if os.path.exists(f"{args.restore_dir}/ckpt.t7"):
     print(f"最终恢复后的结果:Loss: {restore_loss:.4f} | Accuracy: {restore_acc:.4f}%")
 else:
     model = model.to(device)
+    
+    # copy model to orig_model
+    orig_model = timm.create_model("vit_base_patch16_224", pretrained=True, num_classes=num_classes)
+    orig_model.load_state_dict(model.state_dict())
+    orig_model = orig_model.to(device)
+    
     obfus_model, permutations, _, _ ,_ = ob_arrowcloak(model)
-    ob_loss, ob_acc = eval(obfus_model, testloader, criterion, device)
-    print(f"arrowcloak混淆后的结果:Loss: {ob_loss:.4f} | Accuracy: {ob_acc:.4f}%")
+    # ob_loss, ob_acc = eval(obfus_model, testloader, criterion, device)
+    # print(f"arrowcloak混淆后的结果:Loss: {ob_loss:.4f} | Accuracy: {ob_acc:.4f}%")
+    
     set_seed()
     init_model = timm.create_model("vit_base_patch16_224", pretrained=True, num_classes=num_classes)
-    restore_model = attack_arrowcloak(obfus_model,init_model)
+    # restore_model = attack_arrowcloak(obfus_model,init_model)
+    restore_model = attack_arrowcloak2(obfus_model,init_model, orig_model)
     new_restore_model = attack_finetune(restore_model, recover_dataloader, testloader, num_classes, save_path=args.restore_dir, device = device, size=224, epochs=args.recover_epochs, lr=args.recover_lr)
     new_restore_loss, new_restore_acc = eval(new_restore_model, testloader, criterion, device)
     print(f"尝试恢复arrowcloak后的结果:Loss: {new_restore_loss:.4f} | Accuracy: {new_restore_acc:.4f}%")

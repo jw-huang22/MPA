@@ -33,7 +33,8 @@ conda install -y \
 
 echo -e "\nInstalling Pip Packages "
 export PIP_PROGRESS_BAR=on
-pip install torch==1.11.0+cu113 torchvision==0.12.0+cu113 -f https://mirrors.aliyun.com/pytorch-wheels/cu113/
+# pip install torch==1.11.0+cu113 torchvision==0.12.0+cu113 -f https://mirrors.aliyun.com/pytorch-wheels/cu113/
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
 pip install --retries 3 --timeout 120 -i $PYPI_MIRROR \
    accelerate==0.34.2 \
    aiohappyeyeballs==2.4.4 \

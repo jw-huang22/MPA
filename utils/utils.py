@@ -180,7 +180,72 @@ def col_restore_perm(pre_model_mat, model_mat, threshold=0.0, perm = None):
             restored_matrix[:,i] = pre_model_mat_cpu[:,i]
     restored_matrix = torch.from_numpy(restored_matrix).to(model_mat.device)
     return perm, success, restored_matrix
-    
+
+from scipy.optimize import linear_sum_assignment
+def col_restore_perm2(pre_model_mat, model_mat, threshold=0.0, perm = None):
+    model_mat_cpu = model_mat.cpu().numpy()
+    pre_model_mat_cpu = pre_model_mat.cpu().numpy()
+    # similarty_matrix = cosine_similarity(model_mat_cpu.T, pre_model_mat_cpu.T)
+    # K = A^{-1}Ap = A^T(AA^T)^{-1}Ap
+    # similarty_matrix = model_mat_cpu.T @ np.linalg.inv(model_mat_cpu @ model_mat_cpu.T) @ pre_model_mat_cpu
+    # M = A^T Ap
+    similarty_matrix = model_mat_cpu.T @ pre_model_mat_cpu
+    row_ind, col_ind = linear_sum_assignment(-similarty_matrix)
+    P = np.zeros_like(similarty_matrix)
+    P[row_ind, col_ind] = 1
+    similarty_matrix = P
+    if perm is None:
+        perm = np.argmax(similarty_matrix, axis=1)
+    restored_matrix = np.empty_like(model_mat_cpu)
+    success = []
+    for i, col in enumerate(model_mat_cpu.T):
+        max_similarity = similarty_matrix[i, perm[i]]
+        if max_similarity >= threshold:
+            restored_matrix[:,perm[i]] = model_mat_cpu[:,i]
+            success.append(perm[i])
+    for i in range(len(restored_matrix[0])):
+        if i not in success:
+            restored_matrix[:,i] = pre_model_mat_cpu[:,i]
+    restored_matrix = torch.from_numpy(restored_matrix).to(model_mat.device)
+    return perm, success, restored_matrix  
+
+def col_restore_perm_and_scale(pre_model_mat, model_mat, threshold=0.0, perm = None):
+    model_mat_cpu = model_mat.cpu().numpy()
+    pre_model_mat_cpu = pre_model_mat.cpu().numpy()
+    # Mij = (A^TB)ij^2 / (A^TA)ii
+    A = model_mat_cpu
+    B = pre_model_mat_cpu
+    Mab = A.T @ B
+    Maa = np.diag(A.T @ A)
+    M = Mab**2 / Maa[:, np.newaxis]
+    row_ind, col_ind = linear_sum_assignment(-M)
+    K = np.zeros_like(M)
+    for r, c in zip(row_ind, col_ind):
+        K[r, c] = Mab[r, c] / Maa[r]
+    restored_matrix = model_mat_cpu @ K
+    restored_matrix = torch.from_numpy(restored_matrix).to(model_mat.device)
+    return restored_matrix  
+
+def restore_low_rank(pre_model_mat, model_mat, r):
+    model_mat_cpu = model_mat.cpu().numpy()
+    pre_model_mat_cpu = pre_model_mat.cpu().numpy()
+    K = pre_model_mat_cpu - model_mat_cpu
+    U, S, Vt = np.linalg.svd(K, full_matrices=False)
+    S_r = np.zeros_like(S)
+    S_r[:r] = S[:r]
+    K_r = U @ np.diag(S_r) @ Vt
+    restored_matrix = model_mat_cpu + K_r
+    restored_matrix = torch.from_numpy(restored_matrix).to(model_mat.device)
+    return restored_matrix
+
+def restore_orthogonal(pre_model_mat, model_mat):
+    model_mat_cpu = model_mat.cpu().numpy()
+    pre_model_mat_cpu = pre_model_mat.cpu().numpy()
+    U, _, Vt = np.linalg.svd(pre_model_mat_cpu.T @ model_mat_cpu)
+    K = Vt.T @ U.T
+    restored_matrix = model_mat_cpu @ K
+    restored_matrix = torch.from_numpy(restored_matrix).to(model_mat.device)
+    return restored_matrix
 
 def fix_factor(num, mini=1.0, max=6.0):
     if(num < mini):

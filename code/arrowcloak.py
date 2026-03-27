@@ -162,28 +162,34 @@ if os.path.exists(f"{args.restore_dir}/final_checkpoint"):
 else:
     set_seed()
     init_model = AutoModelForSequenceClassification.from_pretrained(args.model, num_labels=num_labels)
+    original_model = AutoModelForSequenceClassification.from_pretrained(
+        args.weight_dir, 
+        num_labels=num_labels,
+        use_safetensors=True 
+    )
     obfus_model, permutations, masks, scaling_factors, factors2 = ob_arrowcloak(model)
-    obfus_args = TrainingArguments(
-        output_dir=f"{args.obfus_dir}",
-        eval_strategy='no', 
-        save_strategy="no",  
-        per_device_eval_batch_size=args.bs,
-        weight_decay=args.weight_decay,
-        dataloader_num_workers=4, 
-        do_train=False,
-        seed = 42,
-    )
-    trainer = Trainer(
-        model=obfus_model,
-        args=obfus_args,
-        train_dataset=None,
-        eval_dataset=evalset,
-        tokenizer=tokenizer,
-        compute_metrics=compute_metrics,
-    )
-    obfus_result = trainer.evaluate(eval_dataset=evalset)
-    print(f"混淆后的ArrowCloak结果: {obfus_result}")
+    # obfus_args = TrainingArguments(
+    #     output_dir=f"{args.obfus_dir}",
+    #     eval_strategy='no', 
+    #     save_strategy="no",  
+    #     per_device_eval_batch_size=args.bs,
+    #     weight_decay=args.weight_decay,
+    #     dataloader_num_workers=4, 
+    #     do_train=False,
+    #     seed = 42,
+    # )
+    # trainer = Trainer(
+    #     model=obfus_model,
+    #     args=obfus_args,
+    #     train_dataset=None,
+    #     eval_dataset=evalset,
+    #     tokenizer=tokenizer,
+    #     compute_metrics=compute_metrics,
+    # )
+    # obfus_result = trainer.evaluate(eval_dataset=evalset)
+    # print(f"混淆后的ArrowCloak结果: {obfus_result}")
     restore_model, restore_perm = attack_arrowcloak(obfus_model,init_model)
+    # restore_model, restore_perm = attack_arrowcloak2(obfus_model,init_model,original_model)
     restore_args = TrainingArguments(
         output_dir=f"{args.restore_dir}",
         eval_strategy='epoch',  

@@ -30,8 +30,8 @@ export HF_ENDPOINT="https://hf-mirror.com"
 
 conda activate game-of-arrows2
 
-# Basic Test for environment1
-./scripts2/basic_test1.sh
+# Basic Test for environment2
+./scripts2/basic_test2.sh
 ```
 
 

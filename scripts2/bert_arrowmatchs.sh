@@ -8,6 +8,9 @@ OBFUS2="tempo"
 OBFUS3="soter"
 OBFUS4="shadownet"
 OBFUS5="tsqp"
+OBFUS6="LoRO"
+OBFUS7="obfuscatune"
+OBFUS8="groupcover"
 DATASET1="mnli"
 DATASET2="qqp"
 DATASET3="qnli"
@@ -16,28 +19,34 @@ RESTORE_DIR="results/arrowmatch_results"
 
 
 
-./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS1 --dataset $DATASET1 --restore_dir $RESTORE_DIR
-./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS2 --dataset $DATASET1 --restore_dir $RESTORE_DIR
-./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS3 --dataset $DATASET1 --restore_dir $RESTORE_DIR
-./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS4 --dataset $DATASET1 --restore_dir $RESTORE_DIR
-./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS5 --dataset $DATASET1 --restore_dir $RESTORE_DIR
+# ./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS1 --dataset $DATASET1 --restore_dir $RESTORE_DIR
+# ./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS2 --dataset $DATASET1 --restore_dir $RESTORE_DIR
+# ./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS3 --dataset $DATASET1 --restore_dir $RESTORE_DIR
+# ./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS4 --dataset $DATASET1 --restore_dir $RESTORE_DIR
+# ./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS5 --dataset $DATASET1 --restore_dir $RESTORE_DIR
+# ./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS6 --dataset $DATASET1 --restore_dir $RESTORE_DIR
+# ./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS7 --dataset $DATASET1 --restore_dir $RESTORE_DIR
+# ./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS8 --dataset $DATASET1 --restore_dir $RESTORE_DIR
 
-./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS1 --dataset $DATASET2 --restore_dir $RESTORE_DIR
-./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS2 --dataset $DATASET2 --restore_dir $RESTORE_DIR
-./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS3 --dataset $DATASET2 --restore_dir $RESTORE_DIR
-./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS4 --dataset $DATASET2 --restore_dir $RESTORE_DIR
-./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS5 --dataset $DATASET2 --restore_dir $RESTORE_DIR
+# ./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS1 --dataset $DATASET2 --restore_dir $RESTORE_DIR
+# ./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS2 --dataset $DATASET2 --restore_dir $RESTORE_DIR
+# ./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS3 --dataset $DATASET2 --restore_dir $RESTORE_DIR
+# ./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS4 --dataset $DATASET2 --restore_dir $RESTORE_DIR
+# ./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS5 --dataset $DATASET2 --restore_dir $RESTORE_DIR
 
-./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS1 --dataset $DATASET3 --restore_dir $RESTORE_DIR
-./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS2 --dataset $DATASET3 --restore_dir $RESTORE_DIR
-./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS3 --dataset $DATASET3 --restore_dir $RESTORE_DIR
-./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS4 --dataset $DATASET3 --restore_dir $RESTORE_DIR
-./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS5 --dataset $DATASET3 --restore_dir $RESTORE_DIR
+# ./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS1 --dataset $DATASET3 --restore_dir $RESTORE_DIR
+# ./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS2 --dataset $DATASET3 --restore_dir $RESTORE_DIR
+# ./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS3 --dataset $DATASET3 --restore_dir $RESTORE_DIR
+# ./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS4 --dataset $DATASET3 --restore_dir $RESTORE_DIR
+# ./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS5 --dataset $DATASET3 --restore_dir $RESTORE_DIR
 
-./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS1 --dataset $DATASET4 --restore_dir $RESTORE_DIR
-./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS2 --dataset $DATASET4 --restore_dir $RESTORE_DIR
-./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS3 --dataset $DATASET4 --restore_dir $RESTORE_DIR
-./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS4 --dataset $DATASET4 --restore_dir $RESTORE_DIR
-./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS5 --dataset $DATASET4 --restore_dir $RESTORE_DIR
+# ./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS1 --dataset $DATASET4 --restore_dir $RESTORE_DIR
+# ./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS2 --dataset $DATASET4 --restore_dir $RESTORE_DIR
+# ./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS3 --dataset $DATASET4 --restore_dir $RESTORE_DIR
+# ./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS4 --dataset $DATASET4 --restore_dir $RESTORE_DIR
+# ./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS5 --dataset $DATASET4 --restore_dir $RESTORE_DIR
+# ./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS6 --dataset $DATASET4 --restore_dir $RESTORE_DIR
+# ./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS7 --dataset $DATASET4 --restore_dir $RESTORE_DIR
+./scripts/arrowmatch.sh --gpus $GPUS --obfus $OBFUS8 --dataset $DATASET4 --restore_dir $RESTORE_DIR
 
 echo "所有脚本执行完毕！"
