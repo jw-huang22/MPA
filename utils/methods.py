@@ -777,9 +777,9 @@ def attack_arrowcloak2(model, pre_model, orig_model):
             if os.path.exists(f"{path}/A_rec_{name.replace('.','_')}.npy"):
                 print("恢复成功!")
                 restore_w = np.load(f"{path}/A_rec_{name.replace('.','_')}.npy")
-            # elif True:
-            #     print("使用公共模型权重作为恢复结果")
-            #     restore_w = A_pub
+            elif True:
+                print("使用公共模型权重作为恢复结果")
+                restore_w = A_pub
             else:
                 A_real = orig_model.state_dict()[name].data.cpu().numpy()
                 np.save(f"{path}/A_obf_{name.replace('.','_')}.npy", A_obf)
@@ -974,14 +974,15 @@ def ob_groupcover(model, size=4):
     return model
     
 
-def attack_groupcover(model, pre_model, vic_model):
+def attack_groupcover(model, pre_model, vic_model, dataset="SST2"):
     set_seed()
     for name, module in model.named_parameters():
         if "query.weight" in name or "key.weight" in name or "value.weight" in name or "output.dense.weight" in name or "intermediate.dense.weight" in name:
             ob_w = module.data
             pre_w = pre_model.state_dict()[name].data
             vic_w = vic_model.state_dict()[name].data
-            path = "./data/weight_SST2"
+            path = f"./data/weight_{dataset}"
+            
             if os.path.exists(f"{path}/A_GC_{name.replace('.','_')}.npy"):
                 restore_w = np.load(f"{path}/A_GC_{name.replace('.','_')}.npy")
             else:
@@ -990,6 +991,38 @@ def attack_groupcover(model, pre_model, vic_model):
             restore_w = torch.from_numpy(restore_w).to(ob_w.device)
             restore_w = restore_w.type_as(ob_w)
             module.data = restore_w
+            # error = np.linalg.norm(pre_w.cpu().numpy() - vic_w.cpu().numpy())
+            # print(f"公共模型与原始模型的误差: {error:.4e}")
+            # error = np.linalg.norm(module.data.cpu().numpy() - pre_w.cpu().numpy())
+            # print(f"恢复后与公共模型的误差: {error:.4e}")
+            # error = np.linalg.norm(module.data.cpu().numpy() - vic_w.cpu().numpy())
+            # print(f"恢复后与原始模型的误差: {error:.4e}")
+        else:
+            module.data = pre_model.state_dict()[name].data
+    return model
+
+def ob_twinshield(model):
+    #TODO
+    return model
+
+def attack_twinshield(model, pre_model, vic_model, dataset="SST2"):
+    set_seed()
+    for name, module in model.named_parameters():
+        if "query.weight" in name or "key.weight" in name or "value.weight" in name or "output.dense.weight" in name or "intermediate.dense.weight" in name:
+            ob_w = module.data
+            pre_w = pre_model.state_dict()[name].data
+            vic_w = vic_model.state_dict()[name].data
+            path = f"../test/twinshield_result/{dataset}/{name.replace('.','_')}"
+            
+            if os.path.exists(f"{path}/Ws_recovered.npy"):
+                restore_w = np.load(f"{path}/Ws_recovered.npy")
+            else:
+                # TODO
+                restore_w = pre_w.cpu().numpy()
+                print(f"使用公共模型权重作为恢复结果 {name}")
+            restore_w = torch.from_numpy(restore_w).to(ob_w.device)
+            restore_w = restore_w.type_as(ob_w)
+            module.data = restore_w   
             error = np.linalg.norm(pre_w.cpu().numpy() - vic_w.cpu().numpy())
             print(f"公共模型与原始模型的误差: {error:.4e}")
             error = np.linalg.norm(module.data.cpu().numpy() - pre_w.cpu().numpy())
