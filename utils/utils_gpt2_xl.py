@@ -12,6 +12,7 @@ from torch.utils.data import DataLoader, TensorDataset, Dataset, random_split
 from tqdm import tqdm
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
+from scipy.optimize import linear_sum_assignment
 from pynvml import nvmlInit, nvmlDeviceGetHandleByIndex, nvmlDeviceGetMemoryInfo
 from pdb import set_trace as st
 from transformers import (
@@ -159,6 +160,98 @@ def col_restore_perm(pre_model_mat, model_mat, threshold=0.0):
             restored_matrix[:,i] = pre_model_mat_cpu[:,i]
     restored_matrix = torch.from_numpy(restored_matrix).to(model_mat.device)
     return perm, success, restored_matrix
+
+
+def _apply_inv_perm_scale(ob_w, inv_perm, inv_scales, axis="col"):
+    device, dtype = ob_w.device, ob_w.dtype
+    ip = torch.as_tensor(inv_perm, device=device, dtype=torch.long)
+    sc = torch.as_tensor(inv_scales, device=device, dtype=dtype)
+    if axis == "col":
+        return ob_w[:, ip] * sc.view(1, -1)
+    return ob_w[ip, :] * sc.view(-1, 1)
+
+
+def col_restore_perm_our(pre_model_mat, model_mat):
+    model_mat_cpu = model_mat.cpu().numpy()
+    pre_model_mat_cpu = pre_model_mat.cpu().numpy()
+    M = model_mat_cpu.T @ pre_model_mat_cpu
+    row_ind, col_ind = linear_sum_assignment(-M)
+    perm = row_ind[np.argsort(col_ind)]
+    inv_perm = np.argsort(perm)
+    return inv_perm
+
+
+def row_restore_perm_our(pre_model_mat, model_mat):
+    model_mat_cpu = model_mat.cpu().numpy()
+    pre_model_mat_cpu = pre_model_mat.cpu().numpy()
+    M = model_mat_cpu @ pre_model_mat_cpu.T
+    row_ind, col_ind = linear_sum_assignment(-M)
+    perm = row_ind[np.argsort(col_ind)]
+    inv_perm = np.argsort(perm)
+    return inv_perm
+
+
+def col_restore_perm_and_scale(pre_model_mat, model_mat):
+    model_mat_cpu = model_mat.cpu().numpy()
+    pre_model_mat_cpu = pre_model_mat.cpu().numpy()
+    A = model_mat_cpu
+    B = pre_model_mat_cpu
+    Mab = B.T @ A
+    Maa = np.diag(A.T @ A)
+    Maa = np.maximum(Maa, 1e-20)
+    M = (Mab**2) / Maa[np.newaxis, :]
+    row_ind, col_ind = linear_sum_assignment(-M)
+    perm = col_ind[np.argsort(row_ind)]
+    inv_perm = np.argsort(perm)
+    scales = (Mab[row_ind, col_ind] / Maa[col_ind])[np.argsort(row_ind)]
+    inv_scales = 1.0 / scales
+    return inv_perm, inv_scales
+
+
+def row_restore_perm_and_scale(pre_model_mat, model_mat):
+    model_mat_cpu = model_mat.cpu().numpy()
+    pre_model_mat_cpu = pre_model_mat.cpu().numpy()
+    A = model_mat_cpu
+    B = pre_model_mat_cpu
+    Mab = B @ A.T
+    Maa = np.diag(A @ A.T)
+    Maa = np.maximum(Maa, 1e-20)
+    M = (Mab**2) / Maa[np.newaxis, :]
+    row_ind, col_ind = linear_sum_assignment(-M)
+    perm = col_ind[np.argsort(row_ind)]
+    inv_perm = np.argsort(perm)
+    scales = (Mab[row_ind, col_ind] / Maa[col_ind])[np.argsort(row_ind)]
+    inv_scales = 1.0 / scales
+    return inv_perm, inv_scales
+
+
+def restore_low_rank(pre_model_mat, model_mat, r):
+    target_device = model_mat.device
+    target_dtype = model_mat.dtype
+    model_mat_cpu = model_mat.detach().cpu().to(dtype=torch.float64)
+    pre_model_mat_cpu = pre_model_mat.detach().cpu().to(dtype=torch.float64)
+    K = pre_model_mat_cpu - model_mat_cpu
+    if not torch.isfinite(K).all():
+        raise ValueError("restore_low_rank received non-finite values in the weight difference")
+    U, S, Vt = torch.linalg.svd(K, full_matrices=False)
+    K_r = (U[:, :r] * S[:r]) @ Vt[:r, :]
+    restored_matrix = model_mat_cpu + K_r
+    restored_matrix = restored_matrix.to(device=target_device, dtype=target_dtype)
+    K_r_t = (-K_r).to(dtype=target_dtype)
+    return restored_matrix, K_r_t
+
+
+def restore_orthogonal(pre_model_mat, model_mat):
+    target_device = model_mat.device
+    target_dtype = model_mat.dtype
+    model_mat_cpu = model_mat.detach().cpu().to(dtype=torch.float64)
+    pre_model_mat_cpu = pre_model_mat.detach().cpu().to(dtype=torch.float64)
+    U, _, Vt = torch.linalg.svd(pre_model_mat_cpu.T @ model_mat_cpu, full_matrices=False)
+    K = Vt.T @ U.T
+    restored_matrix = (model_mat_cpu @ K).to(device=target_device, dtype=target_dtype)
+    K_inv = K.T.to(dtype=target_dtype)
+    return restored_matrix, K_inv
+
 
 def fix_factor(num, mini=1.0, max=6.0):
     if(num < mini):

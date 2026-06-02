@@ -1,0 +1,241 @@
+{
+  "num_runs": 21,
+  "metric_key": "eval_accuracy",
+  "distance_metric": "l2",
+  "pearson": -0.8316685782106676,
+  "spearman": -0.9688311688311689,
+  "line": [
+    {
+      "line_scale": 0.0,
+      "alpha": 1.0,
+      "distance_to_victim": 1.6472694841555333,
+      "mean_pre_metric": 0.9185779816513762,
+      "mean_metric": 0.9139908256880734,
+      "std_metric": 0.0,
+      "num_runs": 1
+    },
+    {
+      "line_scale": 0.05,
+      "alpha": 0.95,
+      "distance_to_victim": 1.66980268680008,
+      "mean_pre_metric": 0.9139908256880734,
+      "mean_metric": 0.9128440366972477,
+      "std_metric": 0.0,
+      "num_runs": 1
+    },
+    {
+      "line_scale": 0.1,
+      "alpha": 0.9,
+      "distance_to_victim": 1.7356479455061462,
+      "mean_pre_metric": 0.9128440366972477,
+      "mean_metric": 0.9128440366972477,
+      "std_metric": 0.0,
+      "num_runs": 1
+    },
+    {
+      "line_scale": 0.15,
+      "alpha": 0.85,
+      "distance_to_victim": 1.8401615656335504,
+      "mean_pre_metric": 0.9128440366972477,
+      "mean_metric": 0.9151376146788991,
+      "std_metric": 0.0,
+      "num_runs": 1
+    },
+    {
+      "line_scale": 0.2,
+      "alpha": 0.8,
+      "distance_to_victim": 1.9772213498012137,
+      "mean_pre_metric": 0.911697247706422,
+      "mean_metric": 0.9139908256880734,
+      "std_metric": 0.0,
+      "num_runs": 1
+    },
+    {
+      "line_scale": 0.25,
+      "alpha": 0.75,
+      "distance_to_victim": 2.140584598643373,
+      "mean_pre_metric": 0.9128440366972477,
+      "mean_metric": 0.9151376146788991,
+      "std_metric": 0.0,
+      "num_runs": 1
+    },
+    {
+      "line_scale": 0.3,
+      "alpha": 0.7,
+      "distance_to_victim": 2.324712682468755,
+      "mean_pre_metric": 0.9162844036697247,
+      "mean_metric": 0.9128440366972477,
+      "std_metric": 0.0,
+      "num_runs": 1
+    },
+    {
+      "line_scale": 0.35,
+      "alpha": 0.65,
+      "distance_to_victim": 2.5250671857874383,
+      "mean_pre_metric": 0.9151376146788991,
+      "mean_metric": 0.908256880733945,
+      "std_metric": 0.0,
+      "num_runs": 1
+    },
+    {
+      "line_scale": 0.4,
+      "alpha": 0.6,
+      "distance_to_victim": 2.7380881577197873,
+      "mean_pre_metric": 0.9105504587155964,
+      "mean_metric": 0.908256880733945,
+      "std_metric": 0.0,
+      "num_runs": 1
+    },
+    {
+      "line_scale": 0.45,
+      "alpha": 0.55,
+      "distance_to_victim": 2.9610435260278822,
+      "mean_pre_metric": 0.9094036697247706,
+      "mean_metric": 0.9059633027522935,
+      "std_metric": 0.0,
+      "num_runs": 1
+    },
+    {
+      "line_scale": 0.5,
+      "alpha": 0.5,
+      "distance_to_victim": 3.191852024467889,
+      "mean_pre_metric": 0.9002293577981652,
+      "mean_metric": 0.9002293577981652,
+      "std_metric": 0.0,
+      "num_runs": 1
+    },
+    {
+      "line_scale": 0.55,
+      "alpha": 0.44999999999999996,
+      "distance_to_victim": 3.42892818168041,
+      "mean_pre_metric": 0.8910550458715596,
+      "mean_metric": 0.8967889908256881,
+      "std_metric": 0.0,
+      "num_runs": 1
+    },
+    {
+      "line_scale": 0.6,
+      "alpha": 0.4,
+      "distance_to_victim": 3.6710577564426945,
+      "mean_pre_metric": 0.8681192660550459,
+      "mean_metric": 0.893348623853211,
+      "std_metric": 0.0,
+      "num_runs": 1
+    },
+    {
+      "line_scale": 0.65,
+      "alpha": 0.35,
+      "distance_to_victim": 3.917304068365828,
+      "mean_pre_metric": 0.8577981651376146,
+      "mean_metric": 0.8899082568807339,
+      "std_metric": 0.0,
+      "num_runs": 1
+    },
+    {
+      "line_scale": 0.7,
+      "alpha": 0.30000000000000004,
+      "distance_to_victim": 4.1669370561155015,
+      "mean_pre_metric": 0.7740825688073395,
+      "mean_metric": 0.8727064220183486,
+      "std_metric": 0.0,
+      "num_runs": 1
+    },
+    {
+      "line_scale": 0.75,
+      "alpha": 0.25,
+      "distance_to_victim": 4.419383178582488,
+      "mean_pre_metric": 0.6651376146788991,
+      "mean_metric": 0.8509174311926605,
+      "std_metric": 0.0,
+      "num_runs": 1
+    },
+    {
+      "line_scale": 0.8,
+      "alpha": 0.19999999999999996,
+      "distance_to_victim": 4.6741863892786535,
+      "mean_pre_metric": 0.5814220183486238,
+      "mean_metric": 0.7844036697247706,
+      "std_metric": 0.0,
+      "num_runs": 1
+    },
+    {
+      "line_scale": 0.85,
+      "alpha": 0.15000000000000002,
+      "distance_to_victim": 4.930981420276246,
+      "mean_pre_metric": 0.5240825688073395,
+      "mean_metric": 0.6777522935779816,
+      "std_metric": 0.0,
+      "num_runs": 1
+    },
+    {
+      "line_scale": 0.9,
+      "alpha": 0.09999999999999998,
+      "distance_to_victim": 5.189472595555018,
+      "mean_pre_metric": 0.5103211009174312,
+      "mean_metric": 0.5711009174311926,
+      "std_metric": 0.0,
+      "num_runs": 1
+    },
+    {
+      "line_scale": 0.95,
+      "alpha": 0.050000000000000044,
+      "distance_to_victim": 5.449418555244321,
+      "mean_pre_metric": 0.5103211009174312,
+      "mean_metric": 0.5229357798165137,
+      "std_metric": 0.0,
+      "num_runs": 1
+    },
+    {
+      "line_scale": 1.0,
+      "alpha": 0.0,
+      "distance_to_victim": 5.7106205681274735,
+      "mean_pre_metric": 0.5091743119266054,
+      "mean_metric": 0.5091743119266054,
+      "std_metric": 0.0,
+      "num_runs": 1
+    }
+  ],
+  "experiment_mode": "line",
+  "base_distance": 5.7106205681274735,
+  "offline_base_alpha": 0.1,
+  "random_base_alpha": 0.1,
+  "line_scales": [
+    0.0,
+    0.05,
+    0.1,
+    0.15,
+    0.2,
+    0.25,
+    0.3,
+    0.35,
+    0.4,
+    0.45,
+    0.5,
+    0.55,
+    0.6,
+    0.65,
+    0.7,
+    0.75,
+    0.8,
+    0.85,
+    0.9,
+    0.95,
+    1.0
+  ],
+  "offline_radii": [
+    0.5,
+    0.9,
+    0.99,
+    1.0
+  ],
+  "offline_num_dirs": 3,
+  "random_radii": [
+    0.0,
+    0.5,
+    0.9,
+    0.99,
+    1.0
+  ],
+  "random_num_dirs": 3,
+  "line_plot_path": "evaluate_weight_distance_results/bert/sst2/line_scale_vs_accuracy.png"
+}

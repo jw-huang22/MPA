@@ -17,10 +17,10 @@ TSQP="true"
 ./scripts/train.sh --gpus $GPUS --model $MODEL --dataset $DATASET3 --output_dir $output_dir1 
 ./scripts/train.sh --gpus $GPUS --model $MODEL --dataset $DATASET4 --output_dir $output_dir1 
 
-./scripts/train.sh --gpus $GPUS --model $MODEL --dataset $DATASET1 --output_dir $output_dir2 --tsqp $TSQP
-./scripts/train.sh --gpus $GPUS --model $MODEL --dataset $DATASET2 --output_dir $output_dir2 --tsqp $TSQP
-./scripts/train.sh --gpus $GPUS --model $MODEL --dataset $DATASET3 --output_dir $output_dir2 --tsqp $TSQP
-./scripts/train.sh --gpus $GPUS --model $MODEL --dataset $DATASET4 --output_dir $output_dir2 --tsqp $TSQP
+# ./scripts/train.sh --gpus $GPUS --model $MODEL --dataset $DATASET1 --output_dir $output_dir2 --tsqp $TSQP
+# ./scripts/train.sh --gpus $GPUS --model $MODEL --dataset $DATASET2 --output_dir $output_dir2 --tsqp $TSQP
+# ./scripts/train.sh --gpus $GPUS --model $MODEL --dataset $DATASET3 --output_dir $output_dir2 --tsqp $TSQP
+# ./scripts/train.sh --gpus $GPUS --model $MODEL --dataset $DATASET4 --output_dir $output_dir2 --tsqp $TSQP
 
 
 echo "所有脚本执行完毕！"

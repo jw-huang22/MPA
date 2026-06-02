@@ -189,7 +189,7 @@ else:
     # obfus_result = trainer.evaluate(eval_dataset=evalset)
     # print(f"混淆后的ArrowCloak结果: {obfus_result}")
     restore_model, restore_perm = attack_arrowcloak(obfus_model,init_model)
-    # restore_model, restore_perm = attack_arrowcloak2(obfus_model,init_model,original_model)
+    # restore_model, restore_perm = attack_arrowcloak_our(obfus_model, init_model, original_model)
     restore_args = TrainingArguments(
         output_dir=f"{args.restore_dir}",
         eval_strategy='epoch',  

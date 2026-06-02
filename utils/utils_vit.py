@@ -66,7 +66,22 @@ def format_time(seconds):
 def progress_bar(current, total, msg=None):
     global last_time, begin_time
     if current == 0:
-        begin_time = time.time() 
+        begin_time = time.time()
+    # Slurm/重定向到文件时无 TTY：\r 进度条无法在日志里正常刷新，改为逐行打印
+    if not sys.stderr.isatty():
+        cur_time = time.time()
+        if current == 0:
+            last_time = cur_time
+        step_time = cur_time - last_time
+        last_time = cur_time
+        tot_time = cur_time - begin_time
+        extra = " | " + msg if msg else ""
+        sys.stderr.write(
+            "[%d/%d] Step: %s | Tot: %s%s\n"
+            % (current + 1, total, format_time(step_time), format_time(tot_time), extra)
+        )
+        sys.stderr.flush()
+        return
     cur_len = int(TOTAL_BAR_LENGTH * current / total)
     rest_len = int(TOTAL_BAR_LENGTH - cur_len) - 1
     sys.stderr.write(" [")
@@ -111,7 +126,7 @@ def prepare_data(dataset_dir, args, size):
                 transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
                 transforms.Normalize(
-                    (0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)
+                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
                 ),
             ]
         )
@@ -120,7 +135,7 @@ def prepare_data(dataset_dir, args, size):
                 transforms.Resize(size),
                 transforms.ToTensor(),
                 transforms.Normalize(
-                    (0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)
+                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
                 ),
             ]
         )
@@ -401,7 +416,7 @@ def prepare_recover_data(model, trainloader, num_classes, device, save_dir, rati
     for inputs, labels in trainloader:
         for input, label in zip(inputs, labels):
             label_value = label.item()
-            if label_value in class_samples:  
+            if label_value in class_samples:
                 class_samples[label_value].append(input)
             else:
                 print(f"Warning: label {label_value} out of range.")
@@ -409,7 +424,7 @@ def prepare_recover_data(model, trainloader, num_classes, device, save_dir, rati
     selected_labels = []
     for class_label in class_samples:
         num = int(len(class_samples[class_label]) * ratio)
-        samples = random.sample(class_samples[class_label], min(num, 5))
+        samples = random.sample(class_samples[class_label], min(max(num, 1), 5))
         selected_inputs.extend(samples)
         selected_labels.extend([class_label] * len(samples))
     selected_inputs = torch.stack(selected_inputs)
@@ -442,6 +457,8 @@ def prepare_recover_data(model, trainloader, num_classes, device, save_dir, rati
     predicted_labels = predicted_labels.cpu()
     selected_labels = selected_labels.cpu()
     dataset = TensorDataset(selected_inputs, predicted_labels)
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
     save_path = os.path.join(save_dir, "recover_dataset.pth")
     torch.save(dataset, save_path)  
     print(f"Finetune dataset saved to {save_path}")

@@ -1,0 +1,95 @@
+{
+  "num_runs": 17,
+  "metric_key": "eval_accuracy",
+  "distance_metric": "l2",
+  "pearson": -0.3385950691617195,
+  "spearman": -0.10294117647058824,
+  "line": [
+    {
+      "alpha": 0.0,
+      "distance_to_victim": 5.7106205681274735,
+      "mean_metric": 0.5344036697247706,
+      "std_metric": 0.0,
+      "num_runs": 1
+    },
+    {
+      "alpha": 0.25,
+      "distance_to_victim": 4.282965435226138,
+      "mean_metric": 0.8853211009174312,
+      "std_metric": 0.0,
+      "num_runs": 1
+    },
+    {
+      "alpha": 0.5,
+      "distance_to_victim": 2.855310277201703,
+      "mean_metric": 0.8990825688073395,
+      "std_metric": 0.0,
+      "num_runs": 1
+    },
+    {
+      "alpha": 0.75,
+      "distance_to_victim": 1.4276551407096656,
+      "mean_metric": 0.9128440366972477,
+      "std_metric": 0.0,
+      "num_runs": 1
+    },
+    {
+      "alpha": 1.0,
+      "distance_to_victim": 1e-06,
+      "mean_metric": 0.9162844036697247,
+      "std_metric": 0.0,
+      "num_runs": 1
+    }
+  ],
+  "offline": [
+    {
+      "radius_scale": 0.25,
+      "mean_distance_to_victim": 1.4276550977741829,
+      "std_distance_to_victim": 4.345673869795892e-08,
+      "mean_metric": 0.9162844036697247,
+      "std_metric": 0.0,
+      "num_runs": 3
+    },
+    {
+      "radius_scale": 0.5,
+      "mean_distance_to_victim": 2.8553102179754557,
+      "std_distance_to_victim": 1.119257365547419e-07,
+      "mean_metric": 0.9162844036697247,
+      "std_metric": 0.0,
+      "num_runs": 3
+    },
+    {
+      "radius_scale": 0.75,
+      "mean_distance_to_victim": 4.282965687396637,
+      "std_distance_to_victim": 1.4492470225930615e-07,
+      "mean_metric": 0.9166666666666666,
+      "std_metric": 0.0005406015146686503,
+      "num_runs": 3
+    },
+    {
+      "radius_scale": 1.0,
+      "mean_distance_to_victim": 5.710620386202019,
+      "std_distance_to_victim": 1.7430011831296395e-07,
+      "mean_metric": 0.9166666666666666,
+      "std_metric": 0.001430297166197996,
+      "num_runs": 3
+    }
+  ],
+  "experiment_mode": "all",
+  "base_distance": 5.7106205681274735,
+  "offline_base_alpha": 1.0,
+  "line_alphas": [
+    0.0,
+    0.25,
+    0.5,
+    0.75,
+    1.0
+  ],
+  "offline_radii": [
+    0.25,
+    0.5,
+    0.75,
+    1.0
+  ],
+  "offline_num_dirs": 3
+}

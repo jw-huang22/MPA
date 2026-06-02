@@ -1,5 +1,7 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
+os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+os.environ["HF_HOME"] = "/home/fit/renjuxjf/WORK/hjw/.cache/huggingface"
 import csv
 import argparse
 import time
@@ -21,15 +23,42 @@ from utils.utils_vit import *
 # parsers
 parser = argparse.ArgumentParser(description="Training")
 parser.add_argument(
-    "--lr", default=1e-3, type=float, help="learning rate"
+    "--lr", default=5e-5, type=float, help="learning rate"
 )  
-parser.add_argument("--opt", default="sgd")
+parser.add_argument("--opt", default="adam", choices=["adam", "adamw", "sgd"])
+parser.add_argument(
+    "--weight_decay",
+    default=None,
+    type=float,
+    help="weight decay; default is 0.01 for AdamW and 5e-4 for SGD",
+)
 parser.add_argument("--resume", "-r", action="store_true", help="resume from checkpoint")
 parser.add_argument("--noamp",action="store_true")
 parser.add_argument("--bs", type=int, default=128)
 parser.add_argument("--n_epochs", type=int, default=10)
+parser.add_argument(
+    "--lr_scheduler_type",
+    default="linear",
+    type=str,
+    help="learning rate scheduler type (e.g. linear, cosine)",
+)
+parser.add_argument(
+    "--lr_scheduler_warmup_ratio",
+    default=0.1,
+    type=float,
+    help="warmup ratio for linear scheduler (fraction of total epochs)",
+)
 parser.add_argument("--dataset", default="cifar_10", type=str, help="dataset")
-parser.add_argument("--output_dir", default="results")
+parser.add_argument(
+    "--vit_model",
+    default="vit_base_patch16_224.orig_in21k",
+    type=str,
+    help=(
+        "timm ViT checkpoint: default IN-21k only (aligns with HF google/vit-base-patch16-224-in21k). "
+        "Alternatives: vit_base_patch16_224.augreg_in21k, vit_base_patch16_224 (typically IN-1k)."
+    ),
+)
+parser.add_argument("--output_dir", default="results/train_results/ViT_21k_adam")
 parser.add_argument("--adapter", action="store_true", help="use adapter for teacher")
 parser.add_argument("--tsqp", default="false", type=str)
 
@@ -52,8 +81,9 @@ size = 224
 trainloader, testloader, num_classes = prepare_data("./data/datasets", args, size)
 
 print("==> Building model..")
-model = timm.create_model("vit_base_patch16_224", pretrained=True, num_classes=num_classes)
-pre_model = timm.create_model("vit_base_patch16_224", pretrained=True, num_classes=num_classes)
+print(f"    backbone: {args.vit_model} (pretrained=True)")
+model = timm.create_model(args.vit_model, pretrained=True, num_classes=num_classes)
+pre_model = timm.create_model(args.vit_model, pretrained=True, num_classes=num_classes)
 model.cuda()
 
 net = model
@@ -69,12 +99,38 @@ if args.resume:
 
 criterion = nn.CrossEntropyLoss()
 
-if args.opt == "adam":
-    optimizer = optim.Adam(net.parameters(), lr=args.lr)
-elif args.opt == "sgd":
-    optimizer = optim.SGD(net.parameters(), lr=args.lr,momentum=0.9, weight_decay=5e-4)
+if args.weight_decay is None:
+    weight_decay = 5e-4 if args.opt == "sgd" else 0.01
+else:
+    weight_decay = args.weight_decay
 
-scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, args.n_epochs)
+print(
+    f"==> Optimizer: {args.opt} | lr={args.lr:.3e} | "
+    f"weight_decay={weight_decay:.3e} | scheduler={args.lr_scheduler_type} | "
+    f"epochs={args.n_epochs} | bs={args.bs}"
+)
+
+if args.opt in ("adam", "adamw"):
+    optimizer = optim.AdamW(net.parameters(), lr=args.lr, weight_decay=weight_decay)
+elif args.opt == "sgd":
+    optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=weight_decay)
+
+if args.lr_scheduler_type == "linear":
+    warmup_steps = max(1, int(round(args.n_epochs * args.lr_scheduler_warmup_ratio)))
+
+    def lr_lambda(step):
+        # step == scheduler.last_epoch; e 为当前训练轮次下标 0..n_epochs-1（对应 1-based 的 epoch 1..n）
+        e = step
+        if e < warmup_steps:
+            return float(e + 1) / float(warmup_steps)
+        # 在 e=0..n_epochs-1 上从 1 线性降到 1/n_epochs；乘子为 0 出现在 e=n_epochs（全部训完再 step 之后）
+        return max(0.0, 1.0 - float(e) / float(args.n_epochs))
+
+    scheduler = torch.optim.lr_scheduler.LambdaLR(
+        optimizer, lr_lambda, last_epoch=start_epoch - 1
+    )
+else:
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, args.n_epochs)
 scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
 
 
@@ -156,7 +212,7 @@ for epoch in range(start_epoch, args.n_epochs):
     val_loss, acc = test(epoch)
     train_losses.append(train_loss)
     val_losses.append(val_loss)
-    scheduler.step(epoch)  
+    scheduler.step()
     list_loss.append(val_loss)
     list_acc.append(acc)
     with open(f"{args.output_dir}/teacher_log_{args.dataset}.csv", "a", newline='') as f:

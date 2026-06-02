@@ -1,0 +1,727 @@
+[
+  {
+    "mode": "line",
+    "alpha": 0.0,
+    "radius_scale": null,
+    "radius_abs": null,
+    "direction_id": null,
+    "distance_to_victim": 5.7106205681274735,
+    "pre_attack_metrics": {
+      "eval_loss": 0.6866123080253601,
+      "eval_accuracy": 0.5091743119266054,
+      "eval_runtime": 12.7498,
+      "eval_samples_per_second": 68.393,
+      "eval_steps_per_second": 0.549
+    },
+    "post_attack_metrics": {
+      "eval_loss": 0.6629876494407654,
+      "eval_accuracy": 0.5091743119266054,
+      "eval_runtime": 1.6472,
+      "eval_samples_per_second": 529.391,
+      "eval_steps_per_second": 4.25,
+      "epoch": 3.0
+    },
+    "post_attack_metric_key": "eval_accuracy",
+    "post_attack_metric": 0.5091743119266054
+  },
+  {
+    "mode": "line",
+    "alpha": 0.01,
+    "radius_scale": null,
+    "radius_abs": null,
+    "direction_id": null,
+    "distance_to_victim": 5.658287993925225,
+    "pre_attack_metrics": {
+      "eval_loss": 0.6854320764541626,
+      "eval_accuracy": 0.5091743119266054,
+      "eval_runtime": 2.1533,
+      "eval_samples_per_second": 404.968,
+      "eval_steps_per_second": 3.251
+    },
+    "post_attack_metrics": {
+      "eval_loss": 0.6593914031982422,
+      "eval_accuracy": 0.5103211009174312,
+      "eval_runtime": 1.7314,
+      "eval_samples_per_second": 503.639,
+      "eval_steps_per_second": 4.043,
+      "epoch": 3.0
+    },
+    "post_attack_metric_key": "eval_accuracy",
+    "post_attack_metric": 0.5103211009174312
+  },
+  {
+    "mode": "line",
+    "alpha": 0.1,
+    "radius_scale": null,
+    "radius_abs": null,
+    "direction_id": null,
+    "distance_to_victim": 5.189472595555018,
+    "pre_attack_metrics": {
+      "eval_loss": 0.6714289784431458,
+      "eval_accuracy": 0.5103211009174312,
+      "eval_runtime": 2.0907,
+      "eval_samples_per_second": 417.078,
+      "eval_steps_per_second": 3.348
+    },
+    "post_attack_metrics": {
+      "eval_loss": 0.6136334538459778,
+      "eval_accuracy": 0.5711009174311926,
+      "eval_runtime": 1.7438,
+      "eval_samples_per_second": 500.065,
+      "eval_steps_per_second": 4.014,
+      "epoch": 3.0
+    },
+    "post_attack_metric_key": "eval_accuracy",
+    "post_attack_metric": 0.5711009174311926
+  },
+  {
+    "mode": "line",
+    "alpha": 0.5,
+    "radius_scale": null,
+    "radius_abs": null,
+    "direction_id": null,
+    "distance_to_victim": 3.191852024467889,
+    "pre_attack_metrics": {
+      "eval_loss": 0.471895307302475,
+      "eval_accuracy": 0.9002293577981652,
+      "eval_runtime": 2.1786,
+      "eval_samples_per_second": 400.262,
+      "eval_steps_per_second": 3.213
+    },
+    "post_attack_metrics": {
+      "eval_loss": 0.28869783878326416,
+      "eval_accuracy": 0.9002293577981652,
+      "eval_runtime": 1.7234,
+      "eval_samples_per_second": 505.978,
+      "eval_steps_per_second": 4.062,
+      "epoch": 3.0
+    },
+    "post_attack_metric_key": "eval_accuracy",
+    "post_attack_metric": 0.9002293577981652
+  },
+  {
+    "mode": "line",
+    "alpha": 1.0,
+    "radius_scale": null,
+    "radius_abs": null,
+    "direction_id": null,
+    "distance_to_victim": 1.6472694841555333,
+    "pre_attack_metrics": {
+      "eval_loss": 0.2378956526517868,
+      "eval_accuracy": 0.9185779816513762,
+      "eval_runtime": 2.1537,
+      "eval_samples_per_second": 404.892,
+      "eval_steps_per_second": 3.25
+    },
+    "post_attack_metrics": {
+      "eval_loss": 0.24162429571151733,
+      "eval_accuracy": 0.9139908256880734,
+      "eval_runtime": 1.7434,
+      "eval_samples_per_second": 500.172,
+      "eval_steps_per_second": 4.015,
+      "epoch": 3.0
+    },
+    "post_attack_metric_key": "eval_accuracy",
+    "post_attack_metric": 0.9139908256880734
+  },
+  {
+    "mode": "offline",
+    "alpha": 1.0,
+    "radius_scale": 0.01,
+    "radius_abs": 0.05710620568127474,
+    "direction_id": 0,
+    "distance_to_victim": 1.6482590427910842,
+    "pre_attack_metrics": {
+      "eval_loss": 0.2378920465707779,
+      "eval_accuracy": 0.9185779816513762,
+      "eval_runtime": 2.2498,
+      "eval_samples_per_second": 387.582,
+      "eval_steps_per_second": 3.111
+    },
+    "post_attack_metrics": {
+      "eval_loss": 0.24161899089813232,
+      "eval_accuracy": 0.9139908256880734,
+      "eval_runtime": 1.7643,
+      "eval_samples_per_second": 494.253,
+      "eval_steps_per_second": 3.968,
+      "epoch": 3.0
+    },
+    "post_attack_metric_key": "eval_accuracy",
+    "post_attack_metric": 0.9139908256880734
+  },
+  {
+    "mode": "offline",
+    "alpha": 1.0,
+    "radius_scale": 0.1,
+    "radius_abs": 0.5710620568127474,
+    "direction_id": 0,
+    "distance_to_victim": 1.7434473373733663,
+    "pre_attack_metrics": {
+      "eval_loss": 0.23786123096942902,
+      "eval_accuracy": 0.9185779816513762,
+      "eval_runtime": 2.2271,
+      "eval_samples_per_second": 391.541,
+      "eval_steps_per_second": 3.143
+    },
+    "post_attack_metrics": {
+      "eval_loss": 0.24157480895519257,
+      "eval_accuracy": 0.9139908256880734,
+      "eval_runtime": 1.8224,
+      "eval_samples_per_second": 478.486,
+      "eval_steps_per_second": 3.841,
+      "epoch": 3.0
+    },
+    "post_attack_metric_key": "eval_accuracy",
+    "post_attack_metric": 0.9139908256880734
+  },
+  {
+    "mode": "offline",
+    "alpha": 1.0,
+    "radius_scale": 0.5,
+    "radius_abs": 2.8553102840637368,
+    "direction_id": 0,
+    "distance_to_victim": 3.2964061760566254,
+    "pre_attack_metrics": {
+      "eval_loss": 0.23775716125965118,
+      "eval_accuracy": 0.9185779816513762,
+      "eval_runtime": 2.2222,
+      "eval_samples_per_second": 392.405,
+      "eval_steps_per_second": 3.15
+    },
+    "post_attack_metrics": {
+      "eval_loss": 0.24138788878917694,
+      "eval_accuracy": 0.9128440366972477,
+      "eval_runtime": 1.8042,
+      "eval_samples_per_second": 483.324,
+      "eval_steps_per_second": 3.88,
+      "epoch": 3.0
+    },
+    "post_attack_metric_key": "eval_accuracy",
+    "post_attack_metric": 0.9128440366972477
+  },
+  {
+    "mode": "offline",
+    "alpha": 1.0,
+    "radius_scale": 1.0,
+    "radius_abs": 5.7106205681274735,
+    "direction_id": 0,
+    "distance_to_victim": 5.943457294689659,
+    "pre_attack_metrics": {
+      "eval_loss": 0.23770302534103394,
+      "eval_accuracy": 0.9174311926605505,
+      "eval_runtime": 2.2205,
+      "eval_samples_per_second": 392.701,
+      "eval_steps_per_second": 3.152
+    },
+    "post_attack_metrics": {
+      "eval_loss": 0.24118664860725403,
+      "eval_accuracy": 0.9139908256880734,
+      "eval_runtime": 1.771,
+      "eval_samples_per_second": 492.379,
+      "eval_steps_per_second": 3.953,
+      "epoch": 3.0
+    },
+    "post_attack_metric_key": "eval_accuracy",
+    "post_attack_metric": 0.9139908256880734
+  },
+  {
+    "mode": "offline",
+    "alpha": 1.0,
+    "radius_scale": 0.01,
+    "radius_abs": 0.05710620568127474,
+    "direction_id": 1,
+    "distance_to_victim": 1.6482590427160406,
+    "pre_attack_metrics": {
+      "eval_loss": 0.23790089786052704,
+      "eval_accuracy": 0.9185779816513762,
+      "eval_runtime": 2.2056,
+      "eval_samples_per_second": 395.36,
+      "eval_steps_per_second": 3.174
+    },
+    "post_attack_metrics": {
+      "eval_loss": 0.2416268289089203,
+      "eval_accuracy": 0.9139908256880734,
+      "eval_runtime": 1.7893,
+      "eval_samples_per_second": 487.331,
+      "eval_steps_per_second": 3.912,
+      "epoch": 3.0
+    },
+    "post_attack_metric_key": "eval_accuracy",
+    "post_attack_metric": 0.9139908256880734
+  },
+  {
+    "mode": "offline",
+    "alpha": 1.0,
+    "radius_scale": 0.1,
+    "radius_abs": 0.5710620568127474,
+    "direction_id": 1,
+    "distance_to_victim": 1.7434473248200302,
+    "pre_attack_metrics": {
+      "eval_loss": 0.237949401140213,
+      "eval_accuracy": 0.9185779816513762,
+      "eval_runtime": 2.2342,
+      "eval_samples_per_second": 390.304,
+      "eval_steps_per_second": 3.133
+    },
+    "post_attack_metrics": {
+      "eval_loss": 0.24165914952754974,
+      "eval_accuracy": 0.9139908256880734,
+      "eval_runtime": 1.7769,
+      "eval_samples_per_second": 490.743,
+      "eval_steps_per_second": 3.939,
+      "epoch": 3.0
+    },
+    "post_attack_metric_key": "eval_accuracy",
+    "post_attack_metric": 0.9139908256880734
+  },
+  {
+    "mode": "offline",
+    "alpha": 1.0,
+    "radius_scale": 0.5,
+    "radius_abs": 2.8553102840637368,
+    "direction_id": 1,
+    "distance_to_victim": 3.2964060359234066,
+    "pre_attack_metrics": {
+      "eval_loss": 0.23819662630558014,
+      "eval_accuracy": 0.9185779816513762,
+      "eval_runtime": 2.1936,
+      "eval_samples_per_second": 397.52,
+      "eval_steps_per_second": 3.191
+    },
+    "post_attack_metrics": {
+      "eval_loss": 0.2418171763420105,
+      "eval_accuracy": 0.9162844036697247,
+      "eval_runtime": 1.7704,
+      "eval_samples_per_second": 492.554,
+      "eval_steps_per_second": 3.954,
+      "epoch": 3.0
+    },
+    "post_attack_metric_key": "eval_accuracy",
+    "post_attack_metric": 0.9162844036697247
+  },
+  {
+    "mode": "offline",
+    "alpha": 1.0,
+    "radius_scale": 1.0,
+    "radius_abs": 5.7106205681274735,
+    "direction_id": 1,
+    "distance_to_victim": 5.9434569537167405,
+    "pre_attack_metrics": {
+      "eval_loss": 0.2385789006948471,
+      "eval_accuracy": 0.9197247706422018,
+      "eval_runtime": 2.2028,
+      "eval_samples_per_second": 395.863,
+      "eval_steps_per_second": 3.178
+    },
+    "post_attack_metrics": {
+      "eval_loss": 0.2420569658279419,
+      "eval_accuracy": 0.9174311926605505,
+      "eval_runtime": 1.7965,
+      "eval_samples_per_second": 485.383,
+      "eval_steps_per_second": 3.896,
+      "epoch": 3.0
+    },
+    "post_attack_metric_key": "eval_accuracy",
+    "post_attack_metric": 0.9174311926605505
+  },
+  {
+    "mode": "offline",
+    "alpha": 1.0,
+    "radius_scale": 0.01,
+    "radius_abs": 0.05710620568127474,
+    "direction_id": 2,
+    "distance_to_victim": 1.648259042746941,
+    "pre_attack_metrics": {
+      "eval_loss": 0.2378949522972107,
+      "eval_accuracy": 0.9185779816513762,
+      "eval_runtime": 2.2482,
+      "eval_samples_per_second": 387.858,
+      "eval_steps_per_second": 3.114
+    },
+    "post_attack_metrics": {
+      "eval_loss": 0.2416161298751831,
+      "eval_accuracy": 0.9139908256880734,
+      "eval_runtime": 1.8255,
+      "eval_samples_per_second": 477.665,
+      "eval_steps_per_second": 3.834,
+      "epoch": 3.0
+    },
+    "post_attack_metric_key": "eval_accuracy",
+    "post_attack_metric": 0.9139908256880734
+  },
+  {
+    "mode": "offline",
+    "alpha": 1.0,
+    "radius_scale": 0.1,
+    "radius_abs": 0.5710620568127474,
+    "direction_id": 2,
+    "distance_to_victim": 1.7434473334337555,
+    "pre_attack_metrics": {
+      "eval_loss": 0.23789004981517792,
+      "eval_accuracy": 0.9185779816513762,
+      "eval_runtime": 2.2405,
+      "eval_samples_per_second": 389.203,
+      "eval_steps_per_second": 3.124
+    },
+    "post_attack_metrics": {
+      "eval_loss": 0.24154850840568542,
+      "eval_accuracy": 0.9139908256880734,
+      "eval_runtime": 1.7905,
+      "eval_samples_per_second": 487.01,
+      "eval_steps_per_second": 3.909,
+      "epoch": 3.0
+    },
+    "post_attack_metric_key": "eval_accuracy",
+    "post_attack_metric": 0.9139908256880734
+  },
+  {
+    "mode": "offline",
+    "alpha": 1.0,
+    "radius_scale": 0.5,
+    "radius_abs": 2.8553102840637368,
+    "direction_id": 2,
+    "distance_to_victim": 3.2964061257668824,
+    "pre_attack_metrics": {
+      "eval_loss": 0.23790141940116882,
+      "eval_accuracy": 0.9185779816513762,
+      "eval_runtime": 2.204,
+      "eval_samples_per_second": 395.651,
+      "eval_steps_per_second": 3.176
+    },
+    "post_attack_metrics": {
+      "eval_loss": 0.24125590920448303,
+      "eval_accuracy": 0.9162844036697247,
+      "eval_runtime": 1.7873,
+      "eval_samples_per_second": 487.881,
+      "eval_steps_per_second": 3.916,
+      "epoch": 3.0
+    },
+    "post_attack_metric_key": "eval_accuracy",
+    "post_attack_metric": 0.9162844036697247
+  },
+  {
+    "mode": "offline",
+    "alpha": 1.0,
+    "radius_scale": 1.0,
+    "radius_abs": 5.7106205681274735,
+    "direction_id": 2,
+    "distance_to_victim": 5.943457191896354,
+    "pre_attack_metrics": {
+      "eval_loss": 0.23799286782741547,
+      "eval_accuracy": 0.9197247706422018,
+      "eval_runtime": 2.2151,
+      "eval_samples_per_second": 393.67,
+      "eval_steps_per_second": 3.16
+    },
+    "post_attack_metrics": {
+      "eval_loss": 0.2409147173166275,
+      "eval_accuracy": 0.9162844036697247,
+      "eval_runtime": 1.7955,
+      "eval_samples_per_second": 485.672,
+      "eval_steps_per_second": 3.899,
+      "epoch": 3.0
+    },
+    "post_attack_metric_key": "eval_accuracy",
+    "post_attack_metric": 0.9162844036697247
+  },
+  {
+    "mode": "random",
+    "alpha": 1.0,
+    "radius_scale": 0.01,
+    "radius_abs": 0.05710620568127474,
+    "direction_id": 0,
+    "distance_to_victim": 1.6482590427668053,
+    "pre_attack_metrics": {
+      "eval_loss": 0.23788830637931824,
+      "eval_accuracy": 0.9185779816513762,
+      "eval_runtime": 2.2613,
+      "eval_samples_per_second": 385.623,
+      "eval_steps_per_second": 3.096
+    },
+    "post_attack_metrics": {
+      "eval_loss": 0.24162259697914124,
+      "eval_accuracy": 0.9139908256880734,
+      "eval_runtime": 1.8269,
+      "eval_samples_per_second": 477.306,
+      "eval_steps_per_second": 3.832,
+      "epoch": 3.0
+    },
+    "post_attack_metric_key": "eval_accuracy",
+    "post_attack_metric": 0.9139908256880734
+  },
+  {
+    "mode": "random",
+    "alpha": 1.0,
+    "radius_scale": 0.1,
+    "radius_abs": 0.5710620568127474,
+    "direction_id": 0,
+    "distance_to_victim": 1.7434473363717704,
+    "pre_attack_metrics": {
+      "eval_loss": 0.23782388865947723,
+      "eval_accuracy": 0.9185779816513762,
+      "eval_runtime": 2.2366,
+      "eval_samples_per_second": 389.875,
+      "eval_steps_per_second": 3.13
+    },
+    "post_attack_metrics": {
+      "eval_loss": 0.24160712957382202,
+      "eval_accuracy": 0.9139908256880734,
+      "eval_runtime": 1.8305,
+      "eval_samples_per_second": 476.37,
+      "eval_steps_per_second": 3.824,
+      "epoch": 3.0
+    },
+    "post_attack_metric_key": "eval_accuracy",
+    "post_attack_metric": 0.9139908256880734
+  },
+  {
+    "mode": "random",
+    "alpha": 1.0,
+    "radius_scale": 0.5,
+    "radius_abs": 2.8553102840637368,
+    "direction_id": 0,
+    "distance_to_victim": 3.296406154019547,
+    "pre_attack_metrics": {
+      "eval_loss": 0.2375728189945221,
+      "eval_accuracy": 0.9197247706422018,
+      "eval_runtime": 2.2738,
+      "eval_samples_per_second": 383.504,
+      "eval_steps_per_second": 3.079
+    },
+    "post_attack_metrics": {
+      "eval_loss": 0.2415526807308197,
+      "eval_accuracy": 0.9151376146788991,
+      "eval_runtime": 1.8294,
+      "eval_samples_per_second": 476.658,
+      "eval_steps_per_second": 3.826,
+      "epoch": 3.0
+    },
+    "post_attack_metric_key": "eval_accuracy",
+    "post_attack_metric": 0.9151376146788991
+  },
+  {
+    "mode": "random",
+    "alpha": 1.0,
+    "radius_scale": 1.0,
+    "radius_abs": 5.7106205681274735,
+    "direction_id": 0,
+    "distance_to_victim": 5.943457228250084,
+    "pre_attack_metrics": {
+      "eval_loss": 0.23734049499034882,
+      "eval_accuracy": 0.9185779816513762,
+      "eval_runtime": 2.2445,
+      "eval_samples_per_second": 388.509,
+      "eval_steps_per_second": 3.119
+    },
+    "post_attack_metrics": {
+      "eval_loss": 0.2415129691362381,
+      "eval_accuracy": 0.9151376146788991,
+      "eval_runtime": 1.8397,
+      "eval_samples_per_second": 473.989,
+      "eval_steps_per_second": 3.805,
+      "epoch": 3.0
+    },
+    "post_attack_metric_key": "eval_accuracy",
+    "post_attack_metric": 0.9151376146788991
+  },
+  {
+    "mode": "random",
+    "alpha": 1.0,
+    "radius_scale": 0.01,
+    "radius_abs": 0.05710620568127474,
+    "direction_id": 1,
+    "distance_to_victim": 1.648259042670242,
+    "pre_attack_metrics": {
+      "eval_loss": 0.23788857460021973,
+      "eval_accuracy": 0.9185779816513762,
+      "eval_runtime": 2.2694,
+      "eval_samples_per_second": 384.242,
+      "eval_steps_per_second": 3.085
+    },
+    "post_attack_metrics": {
+      "eval_loss": 0.2416268140077591,
+      "eval_accuracy": 0.9139908256880734,
+      "eval_runtime": 1.817,
+      "eval_samples_per_second": 479.902,
+      "eval_steps_per_second": 3.852,
+      "epoch": 3.0
+    },
+    "post_attack_metric_key": "eval_accuracy",
+    "post_attack_metric": 0.9139908256880734
+  },
+  {
+    "mode": "random",
+    "alpha": 1.0,
+    "radius_scale": 0.1,
+    "radius_abs": 0.5710620568127474,
+    "direction_id": 1,
+    "distance_to_victim": 1.7434473228168381,
+    "pre_attack_metrics": {
+      "eval_loss": 0.2378266155719757,
+      "eval_accuracy": 0.9185779816513762,
+      "eval_runtime": 2.0959,
+      "eval_samples_per_second": 416.045,
+      "eval_steps_per_second": 3.34
+    },
+    "post_attack_metrics": {
+      "eval_loss": 0.24164871871471405,
+      "eval_accuracy": 0.9139908256880734,
+      "eval_runtime": 1.8247,
+      "eval_samples_per_second": 477.886,
+      "eval_steps_per_second": 3.836,
+      "epoch": 3.0
+    },
+    "post_attack_metric_key": "eval_accuracy",
+    "post_attack_metric": 0.9139908256880734
+  },
+  {
+    "mode": "random",
+    "alpha": 1.0,
+    "radius_scale": 0.5,
+    "radius_abs": 2.8553102840637368,
+    "direction_id": 1,
+    "distance_to_victim": 3.296405972637435,
+    "pre_attack_metrics": {
+      "eval_loss": 0.23759008944034576,
+      "eval_accuracy": 0.9174311926605505,
+      "eval_runtime": 2.3028,
+      "eval_samples_per_second": 378.669,
+      "eval_steps_per_second": 3.04
+    },
+    "post_attack_metrics": {
+      "eval_loss": 0.24175898730754852,
+      "eval_accuracy": 0.9174311926605505,
+      "eval_runtime": 1.7862,
+      "eval_samples_per_second": 488.194,
+      "eval_steps_per_second": 3.919,
+      "epoch": 3.0
+    },
+    "post_attack_metric_key": "eval_accuracy",
+    "post_attack_metric": 0.9174311926605505
+  },
+  {
+    "mode": "random",
+    "alpha": 1.0,
+    "radius_scale": 1.0,
+    "radius_abs": 5.7106205681274735,
+    "direction_id": 1,
+    "distance_to_victim": 5.943456847162699,
+    "pre_attack_metrics": {
+      "eval_loss": 0.23738305270671844,
+      "eval_accuracy": 0.9208715596330275,
+      "eval_runtime": 2.2077,
+      "eval_samples_per_second": 394.986,
+      "eval_steps_per_second": 3.171
+    },
+    "post_attack_metrics": {
+      "eval_loss": 0.2419198900461197,
+      "eval_accuracy": 0.9162844036697247,
+      "eval_runtime": 1.7419,
+      "eval_samples_per_second": 500.607,
+      "eval_steps_per_second": 4.019,
+      "epoch": 3.0
+    },
+    "post_attack_metric_key": "eval_accuracy",
+    "post_attack_metric": 0.9162844036697247
+  },
+  {
+    "mode": "random",
+    "alpha": 1.0,
+    "radius_scale": 0.01,
+    "radius_abs": 0.05710620568127474,
+    "direction_id": 2,
+    "distance_to_victim": 1.6482590427138335,
+    "pre_attack_metrics": {
+      "eval_loss": 0.2378988415002823,
+      "eval_accuracy": 0.9185779816513762,
+      "eval_runtime": 2.0522,
+      "eval_samples_per_second": 424.907,
+      "eval_steps_per_second": 3.411
+    },
+    "post_attack_metrics": {
+      "eval_loss": 0.24162250757217407,
+      "eval_accuracy": 0.9139908256880734,
+      "eval_runtime": 1.7386,
+      "eval_samples_per_second": 501.548,
+      "eval_steps_per_second": 4.026,
+      "epoch": 3.0
+    },
+    "post_attack_metric_key": "eval_accuracy",
+    "post_attack_metric": 0.9139908256880734
+  },
+  {
+    "mode": "random",
+    "alpha": 1.0,
+    "radius_scale": 0.1,
+    "radius_abs": 0.5710620568127474,
+    "direction_id": 2,
+    "distance_to_victim": 1.7434473242858455,
+    "pre_attack_metrics": {
+      "eval_loss": 0.23792889714241028,
+      "eval_accuracy": 0.9185779816513762,
+      "eval_runtime": 2.2115,
+      "eval_samples_per_second": 394.295,
+      "eval_steps_per_second": 3.165
+    },
+    "post_attack_metrics": {
+      "eval_loss": 0.24161124229431152,
+      "eval_accuracy": 0.9151376146788991,
+      "eval_runtime": 1.7629,
+      "eval_samples_per_second": 494.639,
+      "eval_steps_per_second": 3.971,
+      "epoch": 3.0
+    },
+    "post_attack_metric_key": "eval_accuracy",
+    "post_attack_metric": 0.9151376146788991
+  },
+  {
+    "mode": "random",
+    "alpha": 1.0,
+    "radius_scale": 0.5,
+    "radius_abs": 2.8553102840637368,
+    "direction_id": 2,
+    "distance_to_victim": 3.296405994674515,
+    "pre_attack_metrics": {
+      "eval_loss": 0.23809181153774261,
+      "eval_accuracy": 0.9174311926605505,
+      "eval_runtime": 2.2192,
+      "eval_samples_per_second": 392.943,
+      "eval_steps_per_second": 3.154
+    },
+    "post_attack_metrics": {
+      "eval_loss": 0.24156683683395386,
+      "eval_accuracy": 0.9151376146788991,
+      "eval_runtime": 1.7895,
+      "eval_samples_per_second": 487.29,
+      "eval_steps_per_second": 3.912,
+      "epoch": 3.0
+    },
+    "post_attack_metric_key": "eval_accuracy",
+    "post_attack_metric": 0.9151376146788991
+  },
+  {
+    "mode": "random",
+    "alpha": 1.0,
+    "radius_scale": 1.0,
+    "radius_abs": 5.7106205681274735,
+    "direction_id": 2,
+    "distance_to_victim": 5.943456901066509,
+    "pre_attack_metrics": {
+      "eval_loss": 0.2383638471364975,
+      "eval_accuracy": 0.9174311926605505,
+      "eval_runtime": 2.0799,
+      "eval_samples_per_second": 419.255,
+      "eval_steps_per_second": 3.366
+    },
+    "post_attack_metrics": {
+      "eval_loss": 0.24152562022209167,
+      "eval_accuracy": 0.9162844036697247,
+      "eval_runtime": 1.7505,
+      "eval_samples_per_second": 498.13,
+      "eval_steps_per_second": 3.999,
+      "epoch": 3.0
+    },
+    "post_attack_metric_key": "eval_accuracy",
+    "post_attack_metric": 0.9162844036697247
+  }
+]

@@ -26,7 +26,25 @@ def parse_args():
     parser.add_argument("--output_dir", default="results", type=str, help="Directory to save fine-tuned model")
     parser.add_argument("--gpus", default="0,1", type=str, help="GPU to use")
     parser.add_argument("--tsqp", default="false", type=str, help="Whether to use TSQP")
+    parser.add_argument("--full_finetune", default="true", type=str, help="Whether to fine-tune all parameters")
     return parser.parse_args()
+
+def str2bool(value):
+    return str(value).lower() in ("true", "1", "yes", "y")
+
+def print_trainable_parameters(model):
+    trainable_params = 0
+    all_params = 0
+    for _, param in model.named_parameters():
+        all_params += param.numel()
+        if param.requires_grad:
+            trainable_params += param.numel()
+    trainable_ratio = 100 * trainable_params / all_params
+    print(
+        f"Trainable params: {trainable_params} || "
+        f"All params: {all_params} || "
+        f"Trainable ratio: {trainable_ratio:.4f}%"
+    )
 
 def fine_tune(args):
     """Fine-tune the GPT-2 model for sequence classification."""
@@ -76,16 +94,21 @@ def fine_tune(args):
     print("Loading GPT-2 model for sequence classification...")
     model = GPT2ForSequenceClassification.from_pretrained(args.model, num_labels=num_labels)
 
-    lora_config = LoraConfig(
-        r=8,
-        lora_alpha=16,
-        lora_dropout=0.1, 
-        target_modules=["c_fc", "c_attn", "c_proj"], 
-    )
+    if str2bool(args.full_finetune):
+        print("Fine-tuning mode: full-parameter fine-tuning")
+    else:
+        print("Fine-tuning mode: LoRA fine-tuning")
+        lora_config = LoraConfig(
+            r=8,
+            lora_alpha=16,
+            lora_dropout=0.1,
+            target_modules=["c_fc", "c_attn", "c_proj"],
+        )
+        peft_model = get_peft_model(model, lora_config)
+        model = peft_model.model
 
-    peft_model = get_peft_model(model, lora_config)
-    model = peft_model.model
     model.config.pad_token_id = tokenizer.pad_token_id
+    print_trainable_parameters(model)
 
     #for name, param in model.named_parameters():
     #    if param.requires_grad:

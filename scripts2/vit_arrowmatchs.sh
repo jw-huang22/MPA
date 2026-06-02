@@ -2,36 +2,59 @@
 
 export HF_ENDPOINT="https://hf-mirror.com"
 
-OBFUS1="translinkguard"
-OBFUS2="tempo"
-OBFUS3="soter"
-OBFUS4="shadownet"
-OBFUS5="tsqp"
-OBFUS6="LoRO"
-OBFUS7="obfuscatune"
-DATASET1="cifar_10"
-DATASET2="cifar_100"
-DATASET3="food101"
 RESTORE_DIR="results/arrowmatch_results"
+RANK_R="8"
 
-# ./scripts/arrowmatch_vit.sh  --obfus $OBFUS1 --dataset $DATASET1 --restore_dir $RESTORE_DIR
-# ./scripts/arrowmatch_vit.sh  --obfus $OBFUS2 --dataset $DATASET1 --restore_dir $RESTORE_DIR
-# ./scripts/arrowmatch_vit.sh  --obfus $OBFUS3 --dataset $DATASET1 --restore_dir $RESTORE_DIR
-# ./scripts/arrowmatch_vit.sh  --obfus $OBFUS4 --dataset $DATASET1 --restore_dir $RESTORE_DIR
-# ./scripts/arrowmatch_vit.sh  --obfus $OBFUS5 --dataset $DATASET1 --restore_dir $RESTORE_DIR
+OBFUS_LIST=(
+    # "black"
+    # "translinkguard"
+    # "tempo"
+    # "soter"
+    # "shadownet"
+    # "LoRO"
+    # "obfuscatune"
+    # "groupcover"
+    "twinshield"
+    # "arrowcloak"
+)
 
-# ./scripts/arrowmatch_vit.sh  --obfus $OBFUS1 --dataset $DATASET2 --restore_dir $RESTORE_DIR
-# ./scripts/arrowmatch_vit.sh  --obfus $OBFUS2 --dataset $DATASET2 --restore_dir $RESTORE_DIR
-# ./scripts/arrowmatch_vit.sh  --obfus $OBFUS3 --dataset $DATASET2 --restore_dir $RESTORE_DIR
-# ./scripts/arrowmatch_vit.sh  --obfus $OBFUS4 --dataset $DATASET2 --restore_dir $RESTORE_DIR
-# ./scripts/arrowmatch_vit.sh  --obfus $OBFUS5 --dataset $DATASET2 --restore_dir $RESTORE_DIR
+DATASET_LIST=(
+    "cifar_10"
+    "cifar_100"
+    "food101"
+)
 
-./scripts/arrowmatch_vit.sh  --obfus $OBFUS1 --dataset $DATASET3 --restore_dir $RESTORE_DIR
-# ./scripts/arrowmatch_vit.sh  --obfus $OBFUS2 --dataset $DATASET3 --restore_dir $RESTORE_DIR
-# ./scripts/arrowmatch_vit.sh  --obfus $OBFUS3 --dataset $DATASET3 --restore_dir $RESTORE_DIR
-# ./scripts/arrowmatch_vit.sh  --obfus $OBFUS4 --dataset $DATASET3 --restore_dir $RESTORE_DIR
-# ./scripts/arrowmatch_vit.sh  --obfus $OBFUS5 --dataset $DATASET3 --restore_dir $RESTORE_DIR
-# ./scripts/arrowmatch_vit.sh  --obfus $OBFUS6 --dataset $DATASET3 --restore_dir $RESTORE_DIR
-# ./scripts/arrowmatch_vit.sh  --obfus $OBFUS7 --dataset $DATASET3 --restore_dir $RESTORE_DIR
+for DATASET in "${DATASET_LIST[@]}"; do
+    for OBFUS in "${OBFUS_LIST[@]}"; do
+        ./scripts/arrowmatch_vit.sh \
+            --obfus "$OBFUS" \
+            --dataset "$DATASET" \
+            --restore_dir "$RESTORE_DIR" \
+            --rank_r "$RANK_R"
+    done
+done
 
+RANK_LIST=(
+    # "1"
+    # "2"
+    # "4"
+    # "8"
+    # "16"
+    "32"
+    "64"
+    "128"
+    # "256"
+    # "512"
+    # "768"
+)
+
+for DATASET in "${DATASET_LIST[@]}"; do
+    for RANK in "${RANK_LIST[@]}"; do
+        ./scripts/arrowmatch_vit.sh \
+            --obfus AMO \
+            --dataset "$DATASET" \
+            --restore_dir "$RESTORE_DIR" \
+            --rank_r "$RANK"
+    done
+done
 echo "所有脚本执行完毕！"

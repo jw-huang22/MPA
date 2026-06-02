@@ -1,4 +1,6 @@
 import os
+os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+os.environ["HF_HOME"] = "/home/fit/renjuxjf/WORK/hjw/.cache/huggingface"
 import random
 import numpy as np
 import torch

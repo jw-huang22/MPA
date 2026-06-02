@@ -6,6 +6,7 @@ import numpy as np
 import torch
 import argparse
 from transformers import AutoTokenizer, GPT2ForSequenceClassification, TrainingArguments, Trainer
+import datasets
 from datasets import load_dataset, Dataset
 import evaluate
 from pdb import set_trace as st
@@ -28,6 +29,7 @@ parser.add_argument("--weight_decay", default=1e-4, type=float, help="Weight dec
 parser.add_argument("--gpus", type=str, default="0,1", help="gpu ids")
 parser.add_argument("--recover_lr", default=1e-5, type=float, help="Learning rate for recovering")
 parser.add_argument("--recover_epochs", default=3, type=int, help="epochs for recovering")
+parser.add_argument("--rank_r", default=32, type=int, help="Rank used by AMO/LoRO obfuscation")
 
 parser.add_argument("--obfus", default="translinkguard", type=str, help="obfuscation method")
 parser.add_argument("--output_dir", default="tmp/output_results", type=str, help="output directory")
@@ -50,6 +52,8 @@ else:
 args.weight_dir = f"{args.weight_dir}/{model_name}/{args.dataset}/final_checkpoint"
 args.weight_dir_tsqp = f"{args.weight_dir_tsqp}/{model_name}/{args.dataset}/final_checkpoint"
 args.restore_dir = f"{args.restore_dir}/{model_name}/{args.obfus}/{args.dataset}"
+if "AMO" in args.obfus:
+    args.restore_dir = f"{args.restore_dir}/r{args.rank_r}"
 args.recover_data_dir = f"{args.recover_data_dir}/{model_name}/{args.dataset}"
 
 os.makedirs(args.restore_dir, exist_ok=True)
@@ -74,6 +78,16 @@ task_to_keys = {
 
 actual_task = args.dataset
 validation_key = "validation_matched" if args.dataset == "mnli" else "validation"
+
+print("=" * 60)
+print("Run configuration (for experiments / reproducibility)")
+print("=" * 60)
+print(f"  argv: {sys.argv!r}")
+print(f"  model_name: {model_name}")
+print(f"  actual_task: {actual_task}  num_labels: {num_labels}  validation_key: {validation_key}")
+for k in sorted(vars(args)):
+    print(f"  {k}: {getattr(args, k)}")
+print("=" * 60)
 sentence1_key, sentence2_key = task_to_keys[args.dataset]
 trainset, evalset, tokenizer = prepare_data(actual_task, args.model, validation_key, sentence1_key, sentence2_key, args.max_length)
 
@@ -132,6 +146,146 @@ lora_model.config.pad_token_id = tokenizer.pad_token_id
 
 del lora_model, model
 
+
+def evaluate_obfus_model(obfus_model):
+    obfus_args = TrainingArguments(
+        output_dir=f"{args.obfus_dir}",
+        eval_strategy='no',
+        save_strategy="no",
+        per_device_eval_batch_size=args.bs,
+        weight_decay=args.weight_decay,
+        dataloader_num_workers=4,
+        do_train=False,
+        seed=42,
+    )
+    trainer = Trainer(
+        model=obfus_model,
+        args=obfus_args,
+        train_dataset=None,
+        eval_dataset=evalset,
+        tokenizer=tokenizer,
+        compute_metrics=compute_metrics,
+    )
+    obfus_result = trainer.evaluate(eval_dataset=evalset)
+    print(f"混淆后的结果: {obfus_result}")
+
+
+def finetune_restore_model(restore_model):
+    restore_args = TrainingArguments(
+        output_dir=f"{args.restore_dir}",
+        eval_strategy='epoch',
+        logging_strategy='epoch',
+        save_strategy="epoch",
+        learning_rate=args.recover_lr,
+        per_device_train_batch_size=args.bs,
+        per_device_eval_batch_size=args.bs,
+        num_train_epochs=args.recover_epochs,
+        weight_decay=args.weight_decay,
+        dataloader_num_workers=4,
+        seed=42,
+    )
+    restore_model = get_peft_model(restore_model, lora_config).model
+    restore_model.config.pad_token_id = tokenizer.pad_token_id
+    trainer = Trainer(
+        model=restore_model,
+        args=restore_args,
+        train_dataset=recover_dataset,
+        eval_dataset=evalset,
+        tokenizer=tokenizer,
+        compute_metrics=compute_metrics,
+    )
+    set_seed()
+    trainer.train()
+    restore_results = trainer.evaluate(eval_dataset=evalset)
+    print(f"最终恢复后的结果:{restore_results}")
+
+
+def build_obfus_model(obfus_name, init_model):
+    rank_r = args.rank_r
+    target_model = adjust_lora_model(
+        'gpt2-xl',
+        lora_config=lora_config,
+        num_labels=num_labels,
+        weight1=weight1,
+        weight2=weight2,
+    )
+    target_model.config.pad_token_id = tokenizer.pad_token_id
+    if obfus_name == "translinkguard":
+        obfus_model, _, rows = ob_translinkguard(target_model)
+        attack_meta = rows
+    elif obfus_name == "tsqp":
+        obfus_model, _ = ob_tsqp(target_model)
+        attack_meta = None
+    elif obfus_name == "soter":
+        obfus_model, _, _ = ob_soter(target_model, init_model)
+        attack_meta = None
+    elif obfus_name == "tempo":
+        obfus_model, _, _ = ob_tempo(target_model)
+        attack_meta = None
+    elif obfus_name == "shadownet":
+        obfus_model, _, _ = ob_shadownet(target_model)
+        attack_meta = None
+    elif obfus_name == "LoRO":
+        obfus_model, _ = ob_LoRO(target_model, r=rank_r)
+        attack_meta = None
+    elif obfus_name == "AMO":
+        obfus_model, _ = ob_AMO(target_model, init_model, r=rank_r)
+        attack_meta = None
+    elif obfus_name == "AMO+arrowcloak":
+        obfus_model, _ = ob_AMO(target_model, init_model, r=rank_r)
+        obfus_model, _, _, _, _ = ob_arrowcloak(obfus_model)
+        attack_meta = None
+    elif obfus_name == "obfuscatune":
+        obfus_model, _ = ob_obfuscatune(target_model)
+        attack_meta = None
+    elif obfus_name == "groupcover":
+        obfus_model, _, _, _ = ob_groupcover(target_model)
+        attack_meta = None
+    elif obfus_name == "twinshield":
+        obfus_model, _, _ = ob_twinshield(target_model)
+        pre_state = init_model.state_dict()
+        for name, module in obfus_model.named_parameters():
+            if name in pre_state and module.data.ndim == 2:
+                pre_cols = pre_state[name].shape[1]
+                if module.data.shape[1] != 2 * pre_cols:
+                    continue
+                if "attn.c_attn.weight" in name and pre_cols % 3 == 0:
+                    part_cols = pre_cols // 3
+                    parts = module.data.chunk(3, dim=1)
+                    module.data = torch.cat(
+                        [part[:, :part_cols] for part in parts],
+                        dim=1,
+                    ).clone().contiguous()
+                else:
+                    module.data = module.data[:, :pre_cols].clone().contiguous()
+        attack_meta = None
+    elif obfus_name == "arrowcloak":
+        obfus_model, _, _, _, _ = ob_arrowcloak(target_model)
+        attack_meta = None
+    else:
+        raise ValueError("Invalid obfuscation method")
+    return obfus_model, attack_meta
+
+
+def attack_obfus_model(obfus_name, obfus_model, init_model, attack_meta):
+    if obfus_name == "translinkguard":
+        return attack_translinkguard(obfus_model, init_model, attack_meta)
+    if obfus_name == "tsqp":
+        restore_model, _ = attack_tsqp(obfus_model, init_model)
+        return restore_model
+    if obfus_name == "soter":
+        restore_model, _ = attack_soter(obfus_model, init_model)
+        return restore_model
+    if obfus_name == "tempo":
+        restore_model, _ = attack_tempo(obfus_model, init_model)
+        return restore_model
+    if obfus_name == "shadownet":
+        restore_model, _ = attack_shadownet(obfus_model, init_model)
+        return restore_model
+    restore_model, _ = attack_arrowcloak(obfus_model, init_model)
+    print(f"[arrowmatch] {obfus_name} 原本未覆盖，使用 attack_arrowcloak 完成恢复")
+    return restore_model
+
 if os.path.exists(f"{args.restore_dir}/final_checkpoint"):
     set_seed()
     restore_weight1, restore_weight2 = load_file(f"{args.restore_dir}/final_checkpoint/model-00001-of-00002.safetensors"), load_file(f"{args.restore_dir}/final_checkpoint/model-00002-of-00002.safetensors")
@@ -157,6 +311,23 @@ if os.path.exists(f"{args.restore_dir}/final_checkpoint"):
     final_results = trainer.evaluate(eval_dataset=evalset)
     print(f"最终恢复后的结果:{final_results}")
 else:
+    set_seed()
+    init_model = GPT2ForSequenceClassification.from_pretrained(args.model, num_labels=num_labels)
+    if args.obfus == "black":
+        print("black baseline: no obfuscation, fine-tuning public init model directly")
+        restore_model = init_model
+    else:
+        obfus_model, attack_meta = build_obfus_model(args.obfus, init_model)
+        if args.obfus != "twinshield":
+            evaluate_obfus_model(obfus_model)
+        else:
+            print("TwinShield 混淆结果以列打包形式存储，跳过中间模型评估")
+        set_seed()
+        restore_model = attack_obfus_model(args.obfus, obfus_model, init_model, attack_meta)
+    restore_model.config.pad_token_id = tokenizer.pad_token_id
+    finetune_restore_model(restore_model)
+    sys.exit(0)
+
     if args.obfus == "translinkguard":  
         set_seed()
         init_model =  GPT2ForSequenceClassification.from_pretrained(args.model, num_labels=num_labels) 

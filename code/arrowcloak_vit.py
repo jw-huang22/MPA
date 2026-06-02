@@ -91,7 +91,7 @@ else:
     set_seed()
     init_model = timm.create_model("vit_base_patch16_224", pretrained=True, num_classes=num_classes)
     # restore_model = attack_arrowcloak(obfus_model,init_model)
-    restore_model = attack_arrowcloak2(obfus_model,init_model, orig_model)
+    restore_model, _, _, _ = attack_arrowcloak_our(obfus_model, init_model)
     new_restore_model = attack_finetune(restore_model, recover_dataloader, testloader, num_classes, save_path=args.restore_dir, device = device, size=224, epochs=args.recover_epochs, lr=args.recover_lr)
     new_restore_loss, new_restore_acc = eval(new_restore_model, testloader, criterion, device)
     print(f"尝试恢复arrowcloak后的结果:Loss: {new_restore_loss:.4f} | Accuracy: {new_restore_acc:.4f}%")

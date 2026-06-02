@@ -34,6 +34,7 @@ parser.add_argument("--weight_decay", default=1e-4, type=float, help="Weight dec
 parser.add_argument("--gpus", type=str, default="2,3", help="gpu ids")
 parser.add_argument("--recover_lr", default=1e-5, type=float, help="Learning rate for recovering")
 parser.add_argument("--recover_epochs", default=3, type=int, help="epochs for recovering")
+parser.add_argument("--rank_r", default=32, type=int, help="Rank used by AMO/LoRO obfuscation")
 
 parser.add_argument("--obfus", default="translinkguard", type=str, help="obfuscation method")
 parser.add_argument("--output_dir", default="tmp/output_results", type=str, help="output directory")
@@ -57,6 +58,8 @@ else:
 args.weight_dir = f"{args.weight_dir}/{model_name}/{args.dataset}/final_checkpoint"
 args.weight_dir_tsqp = f"{args.weight_dir_tsqp}/{model_name}/{args.dataset}/final_checkpoint"
 args.restore_dir = f"{args.restore_dir}/{model_name}/{args.obfus}/{args.dataset}"
+if "AMO" in args.obfus:
+    args.restore_dir = f"{args.restore_dir}/r{args.rank_r}"
 args.recover_data_dir = f"{args.recover_data_dir}/{model_name}/{args.dataset}"
 
 os.makedirs(args.restore_dir, exist_ok=True)
@@ -69,6 +72,16 @@ set_seed()
 actual_task = "mnli" if args.dataset == "mnli-mm" else args.dataset
 num_labels = 3 if actual_task.startswith("mnli") else (1 if actual_task == "stsb" else 2)
 validation_key = "validation_mismatched" if args.dataset == "mnli-mm" else "validation_matched" if args.dataset == "mnli" else "validation"
+
+print("=" * 60)
+print("Run configuration (for experiments / reproducibility)")
+print("=" * 60)
+print(f"  argv: {sys.argv!r}")
+print(f"  model_name: {model_name}")
+print(f"  actual_task: {actual_task}  num_labels: {num_labels}  validation_key: {validation_key}")
+for k in sorted(vars(args)):
+    print(f"  {k}: {getattr(args, k)}")
+print("=" * 60)
 
 # Prepare data
 print("Preparing data..")
@@ -109,7 +122,6 @@ if args.obfus == "tsqp":
         model = AutoModelForSequenceClassification.from_pretrained(args.weight_dir, num_labels=num_labels,use_safetensors=True )
 else:
     model = AutoModelForSequenceClassification.from_pretrained(args.weight_dir, num_labels=num_labels, use_safetensors=True )
-    vic_model = AutoModelForSequenceClassification.from_pretrained(args.weight_dir, num_labels=num_labels, use_safetensors=True )
 
 def compute_metrics(eval_pred):
     predictions, labels = eval_pred
@@ -117,7 +129,128 @@ def compute_metrics(eval_pred):
     return metric.compute(predictions=predictions, references=labels)
 
 
-if os.path.exists(f"{args.restore_dir}/final_checkpoint") and False:
+def evaluate_obfus_model(obfus_model):
+    obfus_args = TrainingArguments(
+        output_dir=f"{args.obfus_dir}",
+        eval_strategy='no',
+        save_strategy="no",
+        per_device_eval_batch_size=args.bs,
+        weight_decay=args.weight_decay,
+        dataloader_num_workers=4,
+        do_train=False,
+        seed=42,
+    )
+    trainer = Trainer(
+        model=obfus_model,
+        args=obfus_args,
+        train_dataset=None,
+        eval_dataset=evalset,
+        tokenizer=tokenizer,
+        compute_metrics=compute_metrics,
+    )
+    obfus_result = trainer.evaluate(eval_dataset=evalset)
+    print(f"混淆后的结果: {obfus_result}")
+
+
+def finetune_restore_model(restore_model):
+    restore_args = TrainingArguments(
+        output_dir=f"{args.restore_dir}",
+        eval_strategy='epoch',
+        logging_strategy='epoch',
+        save_strategy="epoch",
+        learning_rate=args.recover_lr,
+        per_device_train_batch_size=args.bs,
+        per_device_eval_batch_size=args.bs,
+        num_train_epochs=args.recover_epochs,
+        weight_decay=args.weight_decay,
+        dataloader_num_workers=4,
+        seed=42,
+    )
+    trainer = Trainer(
+        model=restore_model,
+        args=restore_args,
+        train_dataset=recover_dataset,
+        eval_dataset=evalset,
+        tokenizer=tokenizer,
+        compute_metrics=compute_metrics,
+    )
+    set_seed()
+    trainer.train()
+    restore_results = trainer.evaluate(eval_dataset=evalset)
+    print(f"最终恢复后的结果:{restore_results}")
+
+
+def build_obfus_model(obfus_name, target_model, init_model):
+    rank_r = args.rank_r
+    if obfus_name == "translinkguard":
+        obfus_model, _, rows = ob_translinkguard(target_model)
+        attack_meta = rows
+    elif obfus_name == "tsqp":
+        obfus_model, _ = ob_tsqp(target_model)
+        attack_meta = None
+    elif obfus_name == "soter":
+        obfus_model, _, _ = ob_soter(target_model, init_model)
+        attack_meta = None
+    elif obfus_name == "tempo":
+        obfus_model, _, _ = ob_tempo(target_model)
+        attack_meta = None
+    elif obfus_name == "shadownet":
+        obfus_model, _, _ = ob_shadownet(target_model)
+        attack_meta = None
+    elif obfus_name == "LoRO":
+        obfus_model, _ = ob_LoRO(target_model, r=rank_r)
+        attack_meta = None
+    elif obfus_name == "AMO":
+        obfus_model, _ = ob_AMO(target_model, init_model, r=rank_r)
+        attack_meta = None
+    elif obfus_name == "AMO+arrowcloak":
+        obfus_model, _ = ob_AMO(target_model, init_model, r=rank_r)
+        obfus_model, _, _, _, _ = ob_arrowcloak(obfus_model)
+        attack_meta = None
+    elif obfus_name == "obfuscatune":
+        obfus_model, _ = ob_obfuscatune(target_model)
+        attack_meta = None
+    elif obfus_name == "groupcover":
+        obfus_model, _, _, _ = ob_groupcover(target_model)
+        attack_meta = None
+    elif obfus_name == "twinshield":
+        obfus_model, _, _ = ob_twinshield(target_model)
+        pre_state = init_model.state_dict()
+        for name, module in obfus_model.named_parameters():
+            if name in pre_state and module.data.ndim == 2:
+                pre_cols = pre_state[name].shape[1]
+                if module.data.shape[1] == 2 * pre_cols:
+                    module.data = module.data[:, :pre_cols].clone().contiguous()
+        attack_meta = None
+    elif obfus_name == "arrowcloak":
+        obfus_model, _, _, _, _ = ob_arrowcloak(target_model)
+        attack_meta = None
+    else:
+        raise ValueError("Invalid obfuscation method")
+    return obfus_model, attack_meta
+
+
+def attack_obfus_model(obfus_name, obfus_model, init_model, attack_meta):
+    if obfus_name == "translinkguard":
+        return attack_translinkguard(obfus_model, init_model, attack_meta)
+    if obfus_name == "tsqp":
+        restore_model, _ = attack_tsqp(obfus_model, init_model)
+        return restore_model
+    if obfus_name == "soter":
+        restore_model, _ = attack_soter(obfus_model, init_model)
+        return restore_model
+    if obfus_name == "tempo":
+        restore_model, _ = attack_tempo(obfus_model, init_model)
+        return restore_model
+    if obfus_name == "shadownet":
+        restore_model, _ = attack_shadownet(obfus_model, init_model)
+        return restore_model
+    restore_model, _ = attack_arrowcloak(obfus_model, init_model)
+    print(f"[arrowmatch] {obfus_name} 原本未覆盖，使用 attack_arrowcloak 完成恢复")
+    return restore_model
+
+
+if os.path.exists(f"{args.restore_dir}/final_checkpoint"):
     print("Loading final model..")
     set_seed()
     final_model = AutoModelForSequenceClassification.from_pretrained(f"{args.restore_dir}/final_checkpoint", num_labels=num_labels, use_safetensors=True)
@@ -142,559 +275,17 @@ if os.path.exists(f"{args.restore_dir}/final_checkpoint") and False:
     final_results = trainer.evaluate(eval_dataset=evalset)
     print(f"最终恢复后的结果:{final_results}")
 else:
+    set_seed()
+    init_model = AutoModelForSequenceClassification.from_pretrained(args.model, num_labels=num_labels)
     if args.obfus == "black":
-        set_seed()
-        init_model =  AutoModelForSequenceClassification.from_pretrained(args.model, num_labels=num_labels)
+        print("black baseline: no obfuscation, fine-tuning public init model directly")
         restore_model = init_model
-        restore_args = TrainingArguments(
-            output_dir=f"{args.restore_dir}",
-            eval_strategy='epoch', 
-            logging_strategy='epoch',
-            save_strategy="epoch",  
-            learning_rate=args.recover_lr,
-            per_device_train_batch_size=args.bs,
-            per_device_eval_batch_size=args.bs,
-            num_train_epochs=args.recover_epochs,
-            weight_decay=args.weight_decay,
-            dataloader_num_workers=4,  
-            seed=42,
-        )
-        trainer = Trainer(
-            model=restore_model,
-            args=restore_args,
-            train_dataset=recover_dataset,
-            eval_dataset=evalset,
-            tokenizer=tokenizer,
-            compute_metrics=compute_metrics,
-        )
-        set_seed()
-        trainer.train()
-        restore_results = trainer.evaluate(eval_dataset=evalset)
-        print(f"最终恢复后的结果:{restore_results}")
-    elif args.obfus == "translinkguard":  
-        set_seed() 
-        init_model =  AutoModelForSequenceClassification.from_pretrained(args.model, num_labels=num_labels)
-        obfus_model, permutations,rows = ob_translinkguard(model)
-        # obfus_args = TrainingArguments(
-        #     output_dir=f"{args.obfus_dir}",
-        #     eval_strategy='no',
-        #     save_strategy="no", 
-        #     per_device_eval_batch_size=args.bs,
-        #     weight_decay=args.weight_decay,
-        #     dataloader_num_workers=4, 
-        #     do_train=False,
-        # )
-        # trainer = Trainer(
-        #     model=obfus_model,
-        #     args=obfus_args,
-        #     train_dataset=None,
-        #     eval_dataset=evalset,
-        #     tokenizer=tokenizer,
-        #     compute_metrics=compute_metrics,
-        # )
-        # obfus_result = trainer.evaluate(eval_dataset=evalset)
-        # print(f"混淆后的结果: {obfus_result}")
-        set_seed()
-        restore_model = attack_translinkguard(obfus_model,init_model, rows) 
-        # restore_model = attack_translinkguard2(obfus_model, init_model, rows) 
-        # 加入微调
-        restore_args = TrainingArguments(
-            output_dir=f"{args.restore_dir}",
-            eval_strategy='epoch',  
-            logging_strategy='epoch',
-            save_strategy="epoch",  
-            learning_rate=args.recover_lr,
-            per_device_train_batch_size=args.bs,
-            per_device_eval_batch_size=args.bs,
-            num_train_epochs=args.recover_epochs,
-            weight_decay=args.weight_decay,
-            dataloader_num_workers=4, 
-            seed=42,
-        )
-        trainer = Trainer(
-            model=restore_model,
-            args=restore_args,
-            train_dataset=recover_dataset,
-            eval_dataset=evalset,
-            tokenizer=tokenizer,
-            compute_metrics=compute_metrics,
-        )
-        set_seed()
-        trainer.train()
-        restore_results = trainer.evaluate(eval_dataset=evalset)
-        print(f"最终恢复后的结果:{restore_results}")
-
-    elif args.obfus == "tsqp":
-        set_seed()
-        init_model =  AutoModelForSequenceClassification.from_pretrained(args.model, num_labels=num_labels)
-        obfus_model, scaling_factors = ob_tsqp(model)
-        obfus_args = TrainingArguments(
-            output_dir=f"{args.obfus_dir}",
-            eval_strategy='no', 
-            save_strategy="no",  
-            per_device_eval_batch_size=args.bs,
-            weight_decay=args.weight_decay,
-            dataloader_num_workers=4, 
-            do_train=False,
-        )
-        trainer = Trainer(
-            model=obfus_model,
-            args=obfus_args,
-            train_dataset=None,
-            eval_dataset=evalset,
-            tokenizer=tokenizer,
-            compute_metrics=compute_metrics,
-        )
-        obfus_result = trainer.evaluate(eval_dataset=evalset)
-        print(f"混淆后的结果: {obfus_result}")
-        set_seed()
-        restore_model, restore_scaling_factors = attack_tsqp(obfus_model,init_model)
-        restore_args = TrainingArguments(
-            output_dir=f"{args.restore_dir}",
-            eval_strategy='epoch', 
-            logging_strategy='epoch',
-            save_strategy="epoch",  
-            learning_rate=args.recover_lr,
-            per_device_train_batch_size=args.bs,
-            per_device_eval_batch_size=args.bs,
-            num_train_epochs=args.recover_epochs,
-            weight_decay=args.weight_decay,
-            dataloader_num_workers=4,  
-            seed=42,
-        )
-        trainer = Trainer(
-            model=restore_model,
-            args=restore_args,
-            train_dataset=recover_dataset,
-            eval_dataset=evalset,
-            tokenizer=tokenizer,
-            compute_metrics=compute_metrics,
-        )
-        set_seed()
-        trainer.train()
-        restore_results = trainer.evaluate(eval_dataset=evalset)
-        print(f"最终恢复后的结果:{restore_results}")
-
-    elif args.obfus == "soter":
-        set_seed()
-        init_model =  AutoModelForSequenceClassification.from_pretrained(args.model, num_labels=num_labels)
-        obfus_model, scaling_factors, _ = ob_soter(model,init_model)
-        # obfus_args = TrainingArguments(
-        #     output_dir=f"{args.obfus_dir}",
-        #     eval_strategy='no',
-        #     save_strategy="no", 
-        #     per_device_eval_batch_size=args.bs,
-        #     weight_decay=args.weight_decay,
-        #     dataloader_num_workers=4, 
-        #     do_train=False,
-        # )
-        # trainer = Trainer(
-        #     model=obfus_model,
-        #     args=obfus_args,
-        #     train_dataset=None,
-        #     eval_dataset=evalset,
-        #     tokenizer=tokenizer,
-        #     compute_metrics=compute_metrics,
-        # )
-        # obfus_result = trainer.evaluate(eval_dataset=evalset)
-        # print(f"混淆后的结果: {obfus_result}")
-        set_seed()
-        restore_model, restore_scaling_factors = attack_soter(obfus_model,init_model)
-        # restore_model, restore_scaling_factors = attack_soter2(obfus_model,init_model)
-        # 加入微调
-        restore_args = TrainingArguments(
-            output_dir=f"{args.restore_dir}",
-            eval_strategy='epoch',  
-            logging_strategy='epoch',
-            save_strategy="epoch",  
-            learning_rate=args.recover_lr,
-            per_device_train_batch_size=args.bs,
-            per_device_eval_batch_size=args.bs,
-            num_train_epochs=args.recover_epochs,
-            weight_decay=args.weight_decay,
-            dataloader_num_workers=4, 
-            seed=42,
-        )
-        trainer = Trainer(
-            model=restore_model,
-            args=restore_args,
-            train_dataset=recover_dataset,
-            eval_dataset=evalset,
-            tokenizer=tokenizer,
-            compute_metrics=compute_metrics,
-        )
-        set_seed()
-        trainer.train()
-        restore_results = trainer.evaluate(eval_dataset=evalset)
-        print(f"最终恢复后的结果:{restore_results}")
-           
-    elif args.obfus == "tempo":
-        set_seed()
-        init_model = AutoModelForSequenceClassification.from_pretrained(args.model, num_labels=num_labels)
-        obfus_model, permutations, scaling_factors = ob_tempo(model)
-        obfus_args = TrainingArguments(
-            output_dir=f"{args.obfus_dir}",
-            eval_strategy='no', 
-            save_strategy="no", 
-            per_device_eval_batch_size=args.bs,
-            weight_decay=args.weight_decay,
-            dataloader_num_workers=4, 
-            do_train=False,
-        )
-        trainer = Trainer(
-            model=obfus_model,
-            args=obfus_args,
-            train_dataset=None,
-            eval_dataset=evalset,
-            tokenizer=tokenizer,
-            compute_metrics=compute_metrics,
-        )
-        obfus_result = trainer.evaluate(eval_dataset=evalset)
-        print(f"混淆后的结果: {obfus_result}")
-        set_seed()
-        restore_model, restore_permutations = attack_tempo(obfus_model,init_model)
-        # 加入微调
-        restore_args = TrainingArguments(
-            output_dir=f"{args.restore_dir}",
-            eval_strategy='epoch',
-            logging_strategy='epoch',
-            save_strategy="epoch", 
-            learning_rate=args.recover_lr,
-            per_device_train_batch_size=args.bs,
-            per_device_eval_batch_size=args.bs,
-            num_train_epochs=args.recover_epochs,
-            weight_decay=args.weight_decay,
-            dataloader_num_workers=4, 
-            seed=42,
-        )
-        trainer = Trainer(
-            model=restore_model,
-            args=restore_args,
-            train_dataset=recover_dataset,
-            eval_dataset=evalset,
-            tokenizer=tokenizer,
-            compute_metrics=compute_metrics,
-        )
-        set_seed()
-        trainer.train()
-        restore_results = trainer.evaluate(eval_dataset=evalset)
-        print(f"最终恢复后的结果:{restore_results}")
-
-    elif args.obfus == "shadownet":
-        set_seed()
-        init_model = AutoModelForSequenceClassification.from_pretrained(args.model, num_labels=num_labels)
-        obfus_model, permutations, scaling_factors = ob_shadownet(model)
-        # obfus_args = TrainingArguments(
-        #     output_dir=f"{args.obfus_dir}",
-        #     eval_strategy='no',  
-        #     save_strategy="no",  
-        #     per_device_eval_batch_size=args.bs,
-        #     weight_decay=args.weight_decay,
-        #     dataloader_num_workers=4,  
-        #     do_train=False,
-        #     seed = 42,
-        # )
-        # trainer = Trainer(
-        #     model=obfus_model,
-        #     args=obfus_args,
-        #     train_dataset=None,
-        #     eval_dataset=evalset,
-        #     tokenizer=tokenizer,
-        #     compute_metrics=compute_metrics,
-        # )
-        # obfus_result = trainer.evaluate(eval_dataset=evalset)
-        # print(f"混淆后的结果: {obfus_result}")
-        set_seed()
-        restore_model, restore_permutations = attack_shadownet(obfus_model,init_model)
-        # restore_model, restore_permutations = attack_shadownet2(obfus_model,init_model)
-        # 加入微调
-        restore_args = TrainingArguments(
-            output_dir=f"{args.restore_dir}",
-            eval_strategy='epoch', 
-            logging_strategy='epoch',
-            save_strategy="epoch",
-            learning_rate=args.recover_lr,
-            per_device_train_batch_size=args.bs,
-            per_device_eval_batch_size=args.bs,
-            num_train_epochs=args.recover_epochs,
-            weight_decay=args.weight_decay,
-            dataloader_num_workers=4,
-            seed=42,
-        )
-        trainer = Trainer(
-            model=restore_model,
-            args=restore_args,
-            train_dataset=recover_dataset,
-            eval_dataset=evalset,
-            tokenizer=tokenizer,
-            compute_metrics=compute_metrics,
-        )
-        set_seed()
-        trainer.train()
-        restore_results = trainer.evaluate(eval_dataset=evalset)
-        print(f"最终恢复后的结果:{restore_results}")
-    elif args.obfus == "LoRO":
-        set_seed()
-        init_model = AutoModelForSequenceClassification.from_pretrained(args.model, num_labels=num_labels)
-        rank_r = 12
-        obfus_model = ob_LoRO(model, r=rank_r)
-        # obfus_args = TrainingArguments(
-        #     output_dir=f"{args.obfus_dir}",
-        #     eval_strategy='no',  
-        #     save_strategy="no",  
-        #     per_device_eval_batch_size=args.bs,
-        #     weight_decay=args.weight_decay,
-        #     dataloader_num_workers=4,  
-        #     do_train=False,
-        #     seed = 42,
-        # )
-        # trainer = Trainer(
-        #     model=obfus_model,
-        #     args=obfus_args,
-        #     train_dataset=None,
-        #     eval_dataset=evalset,
-        #     tokenizer=tokenizer,
-        #     compute_metrics=compute_metrics,
-        # )
-        # obfus_result = trainer.evaluate(eval_dataset=evalset)
-        # print(f"混淆后的结果: {obfus_result}")
-        set_seed()
-        restore_model = attack_LoRO(obfus_model,init_model,vic_model, r=rank_r)
-        # restore_model, _ = attack_arrowcloak(obfus_model,init_model)
-        # 加入微调
-        restore_args = TrainingArguments(
-            output_dir=f"{args.restore_dir}",
-            eval_strategy='epoch', 
-            logging_strategy='epoch',
-            save_strategy="epoch",
-            learning_rate=args.recover_lr,
-            per_device_train_batch_size=args.bs,
-            per_device_eval_batch_size=args.bs,
-            num_train_epochs=args.recover_epochs,
-            weight_decay=args.weight_decay,
-            dataloader_num_workers=4,
-            seed=42,
-        )
-        trainer = Trainer(
-            model=restore_model,
-            args=restore_args,
-            train_dataset=recover_dataset,
-            eval_dataset=evalset,
-            tokenizer=tokenizer,
-            compute_metrics=compute_metrics,
-        )
-        set_seed()
-        trainer.train()
-        restore_results = trainer.evaluate(eval_dataset=evalset)
-        print(f"最终恢复后的结果:{restore_results}")
-    elif args.obfus == "obfuscatune":
-        set_seed()
-        init_model = AutoModelForSequenceClassification.from_pretrained(args.model, num_labels=num_labels)
-        obfus_model = ob_obfuscatune(model)
-        obfus_args = TrainingArguments(
-            output_dir=f"{args.obfus_dir}",
-            eval_strategy='no',  
-            save_strategy="no",  
-            per_device_eval_batch_size=args.bs,
-            weight_decay=args.weight_decay,
-            dataloader_num_workers=4,  
-            do_train=False,
-            seed = 42,
-        )
-        trainer = Trainer(
-            model=obfus_model,
-            args=obfus_args,
-            train_dataset=None,
-            eval_dataset=evalset,
-            tokenizer=tokenizer,
-            compute_metrics=compute_metrics,
-        )
-        obfus_result = trainer.evaluate(eval_dataset=evalset)
-        print(f"混淆后的结果: {obfus_result}")
-        set_seed()
-        restore_model = attack_obfuscatune(obfus_model,init_model,vic_model)
-        # restore_model, _ = attack_arrowcloak(obfus_model,init_model)
-        # 加入微调
-        restore_args = TrainingArguments(
-            output_dir=f"{args.restore_dir}",
-            eval_strategy='epoch', 
-            logging_strategy='epoch',
-            save_strategy="epoch",
-            learning_rate=args.recover_lr,
-            per_device_train_batch_size=args.bs,
-            per_device_eval_batch_size=args.bs,
-            num_train_epochs=args.recover_epochs,
-            weight_decay=args.weight_decay,
-            dataloader_num_workers=4,
-            seed=42,
-        )
-        trainer = Trainer(
-            model=restore_model,
-            args=restore_args,
-            train_dataset=recover_dataset,
-            eval_dataset=evalset,
-            tokenizer=tokenizer,
-            compute_metrics=compute_metrics,
-        )
-        set_seed()
-        trainer.train()
-        restore_results = trainer.evaluate(eval_dataset=evalset)
-        print(f"最终恢复后的结果:{restore_results}")
-    elif args.obfus == "groupcover":
-        set_seed()
-        init_model = AutoModelForSequenceClassification.from_pretrained(args.model, num_labels=num_labels)
-        obfus_model = ob_groupcover(model)
-        # obfus_args = TrainingArguments(
-        #     output_dir=f"{args.obfus_dir}",
-        #     eval_strategy='no',  
-        #     save_strategy="no",  
-        #     per_device_eval_batch_size=args.bs,
-        #     weight_decay=args.weight_decay,
-        #     dataloader_num_workers=4,  
-        #     do_train=False,
-        #     seed = 42,
-        # )
-        # trainer = Trainer(
-        #     model=obfus_model,
-        #     args=obfus_args,
-        #     train_dataset=None,
-        #     eval_dataset=evalset,
-        #     tokenizer=tokenizer,
-        #     compute_metrics=compute_metrics,
-        # )
-        # obfus_result = trainer.evaluate(eval_dataset=evalset)
-        # print(f"混淆后的结果: {obfus_result}")
-        set_seed()
-        restore_model = attack_groupcover(obfus_model,init_model,vic_model, dataset=args.dataset.upper())
-        # 加入微调
-        restore_args = TrainingArguments(
-            output_dir=f"{args.restore_dir}",
-            eval_strategy='epoch', 
-            logging_strategy='epoch',
-            save_strategy="epoch",
-            learning_rate=args.recover_lr,
-            per_device_train_batch_size=args.bs,
-            per_device_eval_batch_size=args.bs,
-            num_train_epochs=args.recover_epochs,
-            weight_decay=args.weight_decay,
-            dataloader_num_workers=4,
-            seed=42,
-        )
-        trainer = Trainer(
-            model=restore_model,
-            args=restore_args,
-            train_dataset=recover_dataset,
-            eval_dataset=evalset,
-            tokenizer=tokenizer,
-            compute_metrics=compute_metrics,
-        )
-        set_seed()
-        trainer.train()
-        restore_results = trainer.evaluate(eval_dataset=evalset)
-        print(f"最终恢复后的结果:{restore_results}")
-    elif args.obfus == "twinshield":
-        set_seed()
-        init_model = AutoModelForSequenceClassification.from_pretrained(args.model, num_labels=num_labels)
-        obfus_model = ob_twinshield(model)
-        # obfus_args = TrainingArguments(
-        #     output_dir=f"{args.obfus_dir}",
-        #     eval_strategy='no',  
-        #     save_strategy="no",  
-        #     per_device_eval_batch_size=args.bs,
-        #     weight_decay=args.weight_decay,
-        #     dataloader_num_workers=4,  
-        #     do_train=False,
-        #     seed = 42,
-        # )
-        # trainer = Trainer(
-        #     model=obfus_model,
-        #     args=obfus_args,
-        #     train_dataset=None,
-        #     eval_dataset=evalset,
-        #     tokenizer=tokenizer,
-        #     compute_metrics=compute_metrics,
-        # )
-        # obfus_result = trainer.evaluate(eval_dataset=evalset)
-        # print(f"混淆后的结果: {obfus_result}")
-        set_seed()
-        restore_model = attack_twinshield(obfus_model,init_model,vic_model, dataset=args.dataset.upper())
-        # 加入微调
-        restore_args = TrainingArguments(
-            output_dir=f"{args.restore_dir}",
-            eval_strategy='epoch', 
-            logging_strategy='epoch',
-            save_strategy="epoch",
-            learning_rate=args.recover_lr,
-            per_device_train_batch_size=args.bs,
-            per_device_eval_batch_size=args.bs,
-            num_train_epochs=args.recover_epochs,
-            weight_decay=args.weight_decay,
-            dataloader_num_workers=4,
-            seed=42,
-        )
-        trainer = Trainer(
-            model=restore_model,
-            args=restore_args,
-            train_dataset=recover_dataset,
-            eval_dataset=evalset,
-            tokenizer=tokenizer,
-            compute_metrics=compute_metrics,
-        )
-        set_seed()
-        trainer.train()
-        restore_results = trainer.evaluate(eval_dataset=evalset)
-        print(f"最终恢复后的结果:{restore_results}")
-    elif args.obfus == "arrowcloak":
-        set_seed()
-        init_model = AutoModelForSequenceClassification.from_pretrained(args.model, num_labels=num_labels)
-        obfus_model, _, _, _, _ = ob_arrowcloak(model)
-        # obfus_args = TrainingArguments(
-        #     output_dir=f"{args.obfus_dir}",
-        #     eval_strategy='no',  
-        #     save_strategy="no",  
-        #     per_device_eval_batch_size=args.bs,
-        #     weight_decay=args.weight_decay,
-        #     dataloader_num_workers=4,  
-        #     do_train=False,
-        #     seed = 42,
-        # )
-        # trainer = Trainer(
-        #     model=obfus_model,
-        #     args=obfus_args,
-        #     train_dataset=None,
-        #     eval_dataset=evalset,
-        #     tokenizer=tokenizer,
-        #     compute_metrics=compute_metrics,
-        # )
-        # obfus_result = trainer.evaluate(eval_dataset=evalset)
-        # print(f"混淆后的结果: {obfus_result}")
-        set_seed()
-        restore_model, restore_perm = attack_arrowcloak2(obfus_model,init_model,vic_model)
-         # 加入微调
-        restore_args = TrainingArguments(
-            output_dir=f"{args.restore_dir}",
-            eval_strategy='epoch', 
-            logging_strategy='epoch',
-            save_strategy="epoch",
-            learning_rate=args.recover_lr,
-            per_device_train_batch_size=args.bs,
-            per_device_eval_batch_size=args.bs,
-            num_train_epochs=args.recover_epochs,
-            weight_decay=args.weight_decay,
-            dataloader_num_workers=4,
-            seed=42,
-        )
-        trainer = Trainer(
-            model=restore_model,
-            args=restore_args,
-            train_dataset=recover_dataset,
-            eval_dataset=evalset,
-            tokenizer=tokenizer,
-            compute_metrics=compute_metrics,
-        )
-        set_seed()
-        trainer.train()
-        restore_results = trainer.evaluate(eval_dataset=evalset)
-        print(f"最终恢复后的结果:{restore_results}")
     else:
-        raise ValueError("Invalid obfuscation method")
+        obfus_model, attack_meta = build_obfus_model(args.obfus, model, init_model)
+        if args.obfus != "twinshield":
+            evaluate_obfus_model(obfus_model)
+        else:
+            print("TwinShield 混淆结果以列打包形式存储，跳过中间模型评估")
+        set_seed()
+        restore_model = attack_obfus_model(args.obfus, obfus_model, init_model, attack_meta)
+    finetune_restore_model(restore_model)

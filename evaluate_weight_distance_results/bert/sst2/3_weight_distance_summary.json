@@ -1,0 +1,137 @@
+{
+  "num_runs": 29,
+  "metric_key": "eval_accuracy",
+  "distance_metric": "l2",
+  "pearson": -0.41372279308529214,
+  "spearman": 0.30492610837438416,
+  "line": [
+    {
+      "alpha": 0.0,
+      "distance_to_victim": 5.7106205681274735,
+      "mean_metric": 0.5091743119266054,
+      "std_metric": 0.0,
+      "num_runs": 1
+    },
+    {
+      "alpha": 0.01,
+      "distance_to_victim": 5.658287993925225,
+      "mean_metric": 0.5103211009174312,
+      "std_metric": 0.0,
+      "num_runs": 1
+    },
+    {
+      "alpha": 0.1,
+      "distance_to_victim": 5.189472595555018,
+      "mean_metric": 0.5711009174311926,
+      "std_metric": 0.0,
+      "num_runs": 1
+    },
+    {
+      "alpha": 0.5,
+      "distance_to_victim": 3.191852024467889,
+      "mean_metric": 0.9002293577981652,
+      "std_metric": 0.0,
+      "num_runs": 1
+    },
+    {
+      "alpha": 1.0,
+      "distance_to_victim": 1.6472694841555333,
+      "mean_metric": 0.9139908256880734,
+      "std_metric": 0.0,
+      "num_runs": 1
+    }
+  ],
+  "offline": [
+    {
+      "radius_scale": 0.01,
+      "mean_distance_to_victim": 1.648259042751355,
+      "std_distance_to_victim": 3.0794987850044487e-11,
+      "mean_metric": 0.9139908256880734,
+      "std_metric": 0.0,
+      "num_runs": 3
+    },
+    {
+      "radius_scale": 0.1,
+      "mean_distance_to_victim": 1.743447331875717,
+      "std_distance_to_victim": 5.241957284232122e-09,
+      "mean_metric": 0.9139908256880734,
+      "std_metric": 0.0,
+      "num_runs": 3
+    },
+    {
+      "radius_scale": 0.5,
+      "mean_distance_to_victim": 3.296406112582305,
+      "std_distance_to_victim": 5.796380806279149e-08,
+      "mean_metric": 0.9151376146788991,
+      "std_metric": 0.0016218045440058464,
+      "num_runs": 3
+    },
+    {
+      "radius_scale": 1.0,
+      "mean_distance_to_victim": 5.943457146767584,
+      "std_distance_to_victim": 1.4281243446333733e-07,
+      "mean_metric": 0.9159021406727829,
+      "std_metric": 0.0014302971661979862,
+      "num_runs": 3
+    }
+  ],
+  "random": [
+    {
+      "radius_scale": 0.01,
+      "mean_distance_to_victim": 1.6482590427169603,
+      "std_distance_to_victim": 3.948380403986578e-11,
+      "mean_metric": 0.9139908256880734,
+      "std_metric": 0.0,
+      "num_runs": 3
+    },
+    {
+      "radius_scale": 0.1,
+      "mean_distance_to_victim": 1.743447327824818,
+      "std_distance_to_victim": 6.073290827719525e-09,
+      "mean_metric": 0.9143730886850153,
+      "std_metric": 0.000540601514668598,
+      "num_runs": 3
+    },
+    {
+      "radius_scale": 0.5,
+      "mean_distance_to_victim": 3.2964060404438325,
+      "std_distance_to_victim": 8.081250092182822e-08,
+      "mean_metric": 0.9159021406727829,
+      "std_metric": 0.0010812030293372483,
+      "num_runs": 3
+    },
+    {
+      "radius_scale": 1.0,
+      "mean_distance_to_victim": 5.9434569921597635,
+      "std_distance_to_victim": 1.6838524198574942e-07,
+      "mean_metric": 0.9159021406727829,
+      "std_metric": 0.000540601514668598,
+      "num_runs": 3
+    }
+  ],
+  "experiment_mode": "all",
+  "base_distance": 5.7106205681274735,
+  "offline_base_alpha": 1.0,
+  "random_base_alpha": 1.0,
+  "line_alphas": [
+    0.0,
+    0.01,
+    0.1,
+    0.5,
+    1.0
+  ],
+  "offline_radii": [
+    0.01,
+    0.1,
+    0.5,
+    1.0
+  ],
+  "offline_num_dirs": 3,
+  "random_radii": [
+    0.01,
+    0.1,
+    0.5,
+    1.0
+  ],
+  "random_num_dirs": 3
+}
