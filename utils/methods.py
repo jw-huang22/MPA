@@ -1817,12 +1817,12 @@ def recover_groupcover(A_obf, A_pub, size=4, th=0.1, max_th=0.5, step=0.1):
         perm = idlist
         Ai = A_obf[list(perm), :]
         Bi = A_pub[list(perm), :]
-        P1 = solve_AK_PB(Bi.T, Ai.T, max_iter=50)
+        P1 = solve_AK_PB(Bi.T, Ai.T, max_iter=20)
         Bi = Bi @ P1
         Ki = Bi @ _torch_pinv_np(Ai)
         diff = np.linalg.norm(Ki @ Ai - Bi) / np.linalg.norm(Bi)
 
-        if diff < th * 2:
+        if diff < th * 3:
             P1_list.append(P1)
             perm_list.append(perm)
         if diff < th / 2:
@@ -1900,7 +1900,7 @@ def recover_groupcover(A_obf, A_pub, size=4, th=0.1, max_th=0.5, step=0.1):
 
     return A_guess, inv_perm, cluster_index_out
 
-def attack_groupcover(model, pre_model, size=4, vic_model=None, th=0.15, max_th=0.5, fast=False, fast_only=False, partial=False):
+def attack_groupcover(model, pre_model, size=4, vic_model=None, th=0.1, max_th=0.5, fast=False, fast_only=False, partial=False):
     set_seed()
     restore_permutation = {}
     restore_cluster_index = {}

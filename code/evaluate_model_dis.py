@@ -3,13 +3,15 @@ import csv
 import importlib
 import json
 import os
+import subprocess
 import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import torch.nn as nn
 from datasets import load_dataset
-from transformers import AutoModelForSequenceClassification, Trainer, TrainingArguments
+from transformers import AutoModelForSequenceClassification, GPT2ForSequenceClassification, Trainer, TrainingArguments
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -28,6 +30,23 @@ from utils.weight_distance_utils import (
     set_seed,
 )
 
+try:
+    import timm
+    from utils.methods_vit import attack_finetune as vit_attack_finetune
+    from utils.utils_vit import (
+        eval as vit_eval,
+        load_finetune_dataloader as vit_load_finetune_dataloader,
+        prepare_data as vit_prepare_data,
+        prepare_recover_data as vit_prepare_recover_data,
+    )
+except ImportError:
+    timm = None
+    vit_attack_finetune = None
+    vit_eval = None
+    vit_load_finetune_dataloader = None
+    vit_prepare_data = None
+    vit_prepare_recover_data = None
+
 
 TASK_TO_KEYS = {
     "cola": ("sentence", None),
@@ -41,6 +60,99 @@ TASK_TO_KEYS = {
     "stsb": ("sentence1", "sentence2"),
     "wnli": ("sentence1", "sentence2"),
 }
+
+TEXT_ALL_DATASETS = (
+    "mnli",
+    "qqp",
+    "qnli",
+    "sst2",
+)
+
+VIT_ALL_DATASETS = (
+    "cifar_10",
+    "cifar_100",
+    "food101",
+)
+
+TEXT_MODEL_TARGET_PATTERNS = {
+    "bert": (
+        "query.weight",
+        "key.weight",
+        "value.weight",
+        "output.dense.weight",
+        "intermediate.dense.weight",
+    ),
+    "gpt2_base": (
+        "attn.c_attn.weight",
+        "attn.c_proj.weight",
+        "mlp.c_fc.weight",
+        "mlp.c_proj.weight",
+    ),
+}
+
+VIT_TARGET_PATTERNS = (
+    "qkv.weight",
+    "attn.proj.weight",
+    "mlp.fc1.weight",
+    "mlp.fc2.weight",
+)
+
+
+def resolve_model_config(raw_model, vit_model):
+    normalized = raw_model.lower().replace("_", "-")
+    if normalized in {"bert", "bert-base", "bert-base-cased"}:
+        return {
+            "family": "text",
+            "model_name": "bert",
+            "pretrained_id": "bert-base-cased" if normalized == "bert" else raw_model,
+            "target_patterns": TEXT_MODEL_TARGET_PATTERNS["bert"],
+        }
+    if normalized in {"gpt2", "gpt2-base"}:
+        return {
+            "family": "text",
+            "model_name": "gpt2_base",
+            "pretrained_id": "gpt2",
+            "target_patterns": TEXT_MODEL_TARGET_PATTERNS["gpt2_base"],
+        }
+    if normalized in {"vit", "vit-base", "vit-base-patch16-224"}:
+        return {
+            "family": "vit",
+            "model_name": "ViT",
+            "pretrained_id": vit_model,
+            "target_patterns": VIT_TARGET_PATTERNS,
+        }
+    raise ValueError(
+        "Unsupported --model. Use bert-base-cased, gpt2/gpt2-base, or vit/vit-base."
+    )
+
+
+def get_all_datasets_for_model(model_family):
+    if model_family == "vit":
+        return VIT_ALL_DATASETS
+    return TEXT_ALL_DATASETS
+
+
+def build_dataset_command(argv, dataset):
+    command = [sys.executable, os.path.abspath(__file__)]
+    replaced = False
+    index = 0
+    while index < len(argv):
+        item = argv[index]
+        if item == "--dataset":
+            command.extend(["--dataset", dataset])
+            index += 2
+            replaced = True
+            continue
+        if item.startswith("--dataset="):
+            command.append(f"--dataset={dataset}")
+            index += 1
+            replaced = True
+            continue
+        command.append(item)
+        index += 1
+    if not replaced:
+        command.extend(["--dataset", dataset])
+    return command
 
 
 def parse_float_list(raw_value):
@@ -117,7 +229,12 @@ def compute_spearman(x_values, y_values):
     return compute_pearson(x_ranks, y_ranks)
 
 
-def compute_target_module_delta_norm(pretrained_state_dict, victim_state_dict, eps=1e-12):
+def compute_target_module_delta_norm(
+    pretrained_state_dict,
+    victim_state_dict,
+    target_patterns,
+    eps=1e-12,
+):
     total = 0.0
     for key, pretrained_tensor in pretrained_state_dict.items():
         victim_tensor = victim_state_dict.get(key)
@@ -128,7 +245,7 @@ def compute_target_module_delta_norm(pretrained_state_dict, victim_state_dict, e
             or pretrained_tensor.shape != victim_tensor.shape
             or not torch.is_floating_point(pretrained_tensor)
             or not torch.is_floating_point(victim_tensor)
-            or not is_target_module_key(key)
+            or not is_target_module_key(key, target_patterns)
         ):
             continue
         delta = pretrained_tensor.detach().cpu() - victim_tensor.detach().cpu()
@@ -140,6 +257,7 @@ def compute_target_module_adp(
     sampled_state_dict,
     pretrained_state_dict,
     victim_state_dict,
+    target_patterns,
     eps=1e-12,
 ):
     numerator = 0.0
@@ -158,7 +276,7 @@ def compute_target_module_adp(
             or not torch.is_floating_point(sampled_tensor)
             or not torch.is_floating_point(pretrained_tensor)
             or not torch.is_floating_point(victim_tensor)
-            or not is_target_module_key(key)
+            or not is_target_module_key(key, target_patterns)
         ):
             continue
         sampled_cpu = sampled_tensor.detach().cpu().to(torch.float64)
@@ -381,6 +499,65 @@ def clone_state_dict_to_cpu(model):
     return state_dict
 
 
+def load_text_model(model_config, checkpoint_or_model_id, num_labels, tokenizer=None):
+    model_cls = (
+        GPT2ForSequenceClassification
+        if model_config["model_name"] == "gpt2_base"
+        else AutoModelForSequenceClassification
+    )
+    try:
+        model = model_cls.from_pretrained(
+            checkpoint_or_model_id,
+            num_labels=num_labels,
+            use_safetensors=True,
+        )
+    except Exception as exc:
+        print(
+            f"Warning: failed to load {checkpoint_or_model_id} with safetensors "
+            f"({type(exc).__name__}: {exc}). Retrying without safetensors."
+        )
+        model = model_cls.from_pretrained(
+            checkpoint_or_model_id,
+            num_labels=num_labels,
+            use_safetensors=False,
+        )
+    if tokenizer is not None and model_config["model_name"] == "gpt2_base":
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
+        model.config.pad_token_id = tokenizer.pad_token_id
+    return model
+
+
+def load_state_dict_strict_with_context(model, state_dict, context):
+    try:
+        model.load_state_dict(state_dict, strict=True)
+    except RuntimeError as exc:
+        incompatible = model.load_state_dict(state_dict, strict=False)
+        missing = list(incompatible.missing_keys)
+        unexpected = list(incompatible.unexpected_keys)
+        raise RuntimeError(
+            f"Failed to load state_dict for {context}. "
+            f"missing_keys={missing[:20]}, unexpected_keys={unexpected[:20]}"
+        ) from exc
+    return model
+
+
+def load_vit_model(model_config, num_classes, checkpoint_dir=None):
+    if timm is None:
+        raise ImportError("ViT support requires timm and the ViT utility modules.")
+    model = timm.create_model(
+        model_config["pretrained_id"],
+        pretrained=True,
+        num_classes=num_classes,
+    )
+    if checkpoint_dir is not None:
+        checkpoint_path = os.path.join(checkpoint_dir, "ckpt.t7")
+        checkpoint = torch.load(checkpoint_path, map_location="cpu")
+        state_dict = checkpoint["model"] if isinstance(checkpoint, dict) and "model" in checkpoint else checkpoint
+        model.load_state_dict(state_dict)
+    return model
+
+
 def run_attack(
     args,
     run_name,
@@ -392,12 +569,8 @@ def run_attack(
     compute_metrics,
 ):
     set_seed(args.seed)
-    model = AutoModelForSequenceClassification.from_pretrained(
-        args.model,
-        num_labels=num_labels,
-        use_safetensors=True,
-    )
-    model.load_state_dict(init_state_dict, strict=True)
+    model = load_text_model(args.model_config, args.pretrained_model_id, num_labels, tokenizer)
+    load_state_dict_strict_with_context(model, init_state_dict, run_name)
     run_output_dir = os.path.join(args.output_dir, "runs", run_name)
     os.makedirs(run_output_dir, exist_ok=True)
     training_args = TrainingArguments(
@@ -430,6 +603,78 @@ def run_attack(
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
     return pre_attack_metrics, post_attack_metrics
+
+
+def run_vit_attack(
+    args,
+    run_name,
+    init_state_dict,
+    recover_dataloader,
+    eval_dataloader,
+    num_classes,
+    criterion,
+    device,
+):
+    set_seed(args.seed)
+    model = load_vit_model(args.model_config, num_classes)
+    load_state_dict_strict_with_context(model, init_state_dict, run_name)
+    run_output_dir = os.path.join(args.output_dir, "runs", run_name)
+    os.makedirs(run_output_dir, exist_ok=True)
+
+    pre_loss, pre_acc = vit_eval(model, eval_dataloader, criterion, device)
+    recovered_model = vit_attack_finetune(
+        model,
+        recover_dataloader,
+        eval_dataloader,
+        num_classes,
+        save_path=run_output_dir,
+        device=device,
+        size=args.image_size,
+        epochs=args.recover_epochs,
+        lr=args.recover_lr,
+        weight_decay=args.weight_decay,
+    )
+    post_loss, post_acc = vit_eval(recovered_model, eval_dataloader, criterion, device)
+    del recovered_model
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    return (
+        {"eval_loss": pre_loss, "eval_accuracy": pre_acc / 100.0},
+        {"eval_loss": post_loss, "eval_accuracy": post_acc / 100.0},
+    )
+
+
+def run_attack_for_family(
+    args,
+    run_name,
+    init_state_dict,
+    train_dataset,
+    eval_dataset,
+    tokenizer,
+    num_labels,
+    compute_metrics,
+):
+    if args.model_family == "vit":
+        return run_vit_attack(
+            args=args,
+            run_name=run_name,
+            init_state_dict=init_state_dict,
+            recover_dataloader=train_dataset,
+            eval_dataloader=eval_dataset,
+            num_classes=num_labels,
+            criterion=compute_metrics,
+            device=tokenizer,
+        )
+    return run_attack(
+        args=args,
+        run_name=run_name,
+        init_state_dict=init_state_dict,
+        train_dataset=train_dataset,
+        eval_dataset=eval_dataset,
+        tokenizer=tokenizer,
+        num_labels=num_labels,
+        compute_metrics=compute_metrics,
+    )
 
 
 def plot_line_curve(records, metric_key, output_dir):
@@ -608,7 +853,15 @@ def write_adp_table_csv(records, output_dir):
 def main():
     parser = argparse.ArgumentParser(description="Weight distance vs fine-tuning attack evaluation")
     parser.add_argument("--dataset", default="sst2", type=str, help="dataset")
-    parser.add_argument("--model", default="bert-base-cased", type=str, help="base pretrained model")
+    parser.add_argument("--model", default="bert-base-cased", type=str, help="base pretrained model: bert-base-cased, gpt2-base, or vit-base")
+    parser.add_argument(
+        "--vit_model",
+        default="vit_base_patch16_224.orig_in21k",
+        type=str,
+        help="timm ViT checkpoint used when --model is vit/vit-base",
+    )
+    parser.add_argument("--image_size", default=224, type=int, help="image size for ViT inputs")
+    parser.add_argument("--dataset_dir", default="./data/datasets", type=str, help="dataset root for ViT")
     parser.add_argument("--max_length", default=512, type=int, help="max sequence length")
     parser.add_argument("--recover_lr", default=1e-5, type=float, help="learning rate for attack finetune")
     parser.add_argument("--recover_epochs", default=3, type=int, help="epochs for attack finetune")
@@ -631,7 +884,16 @@ def main():
     parser.add_argument(
         "--experiment_mode",
         default="adp",
-        choices=["baseline", "line", "offline", "random", "adp", "all"],
+        choices=[
+            "baseline",
+            "line",
+            "offline",
+            "random",
+            "adp_control",
+            "adp_curve",
+            "adp",
+            "all",
+        ],
         help="which experiments to run",
     )
     parser.add_argument(
@@ -725,53 +987,114 @@ def main():
         help="distance metric between weights",
     )
     parser.add_argument("--seed", default=42, type=int, help="random seed")
+    parser.add_argument(
+        "--continue_on_error",
+        action="store_true",
+        help="when --dataset all is used, keep running remaining datasets after one fails",
+    )
     args = parser.parse_args()
 
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpus
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-    model_name = "bert"
+    model_config = resolve_model_config(args.model, args.vit_model)
+    args.model_config = model_config
+    args.model_family = model_config["family"]
+    args.pretrained_model_id = model_config["pretrained_id"]
+    target_patterns = model_config["target_patterns"]
+    model_name = model_config["model_name"]
+    if args.model_family == "vit" and timm is None:
+        raise ImportError("ViT support requires timm and the repository ViT utility modules.")
+
+    if args.dataset.lower() == "all":
+        datasets_to_run = get_all_datasets_for_model(args.model_family)
+        print(
+            f"Running all datasets for {model_name}: "
+            f"{', '.join(datasets_to_run)}"
+        )
+        for dataset in datasets_to_run:
+            command = build_dataset_command(sys.argv[1:], dataset)
+            print("=" * 80)
+            print(f"Starting dataset={dataset}")
+            print("Command:", " ".join(command))
+            completed = subprocess.run(command, check=False)
+            if completed.returncode != 0:
+                message = (
+                    f"Dataset {dataset} failed with exit code {completed.returncode}."
+                )
+                if args.continue_on_error:
+                    print(message)
+                    continue
+                raise RuntimeError(message)
+        print("=" * 80)
+        print(f"Finished all datasets for {model_name}.")
+        return
+
     args.output_dir = f"{args.output_dir}/{model_name}/{args.dataset}"
-    args.weight_dir = f"{args.weight_dir}/{model_name}/{args.dataset}/final_checkpoint"
+    if args.model_family == "vit":
+        args.weight_dir = f"{args.weight_dir}/{model_name}/{args.dataset}"
+    else:
+        args.weight_dir = f"{args.weight_dir}/{model_name}/{args.dataset}/final_checkpoint"
     args.recover_data_dir = f"{args.recover_data_dir}/{model_name}/{args.dataset}"
     os.makedirs(args.output_dir, exist_ok=True)
     os.makedirs(args.recover_data_dir, exist_ok=True)
 
-    actual_task = args.dataset
-    num_labels = 3 if actual_task.startswith("mnli") else (1 if actual_task == "stsb" else 2)
-    validation_key = "validation_matched" if args.dataset == "mnli" else "validation"
-    sentence1_key, sentence2_key = TASK_TO_KEYS[args.dataset]
-
     set_seed(args.seed)
-    print("Preparing data..")
-    trainset, evalset, tokenizer = prepare_data(
-        actual_task,
-        args.model,
-        validation_key,
-        sentence1_key,
-        sentence2_key,
-        args.max_length,
-    )
+    if args.model_family == "vit":
+        if args.dataset == "cifar_10":
+            num_labels = 10
+        elif args.dataset == "cifar_100":
+            num_labels = 100
+        elif args.dataset == "food101":
+            num_labels = 101
+        elif args.dataset == "pretrained":
+            num_labels = 1000
+        else:
+            raise ValueError("ViT supports cifar_10, cifar_100, food101, or pretrained.")
 
-    print("Loading metric..")
-    metric = load_glue_metric(actual_task)
+        print("Preparing ViT data..")
+        trainset, evalset, _ = vit_prepare_data(args.dataset_dir, args, args.image_size)
+        tokenizer = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        compute_metrics = nn.CrossEntropyLoss()
 
-    def compute_metrics(eval_pred):
-        predictions, labels = eval_pred
-        predictions = np.argmax(predictions, axis=-1)
-        return metric.compute(predictions=predictions, references=labels)
+        print("Loading ViT victim and pretrained models..")
+        victim_model = load_vit_model(model_config, num_labels, args.weight_dir)
+        pretrained_model = load_vit_model(model_config, num_labels)
+    else:
+        actual_task = args.dataset
+        num_labels = 3 if actual_task.startswith("mnli") else (1 if actual_task == "stsb" else 2)
+        validation_key = "validation_matched" if args.dataset == "mnli" else "validation"
+        sentence1_key, sentence2_key = TASK_TO_KEYS[args.dataset]
 
-    print("Loading victim and pretrained models..")
-    victim_model = AutoModelForSequenceClassification.from_pretrained(
-        args.weight_dir,
-        num_labels=num_labels,
-        use_safetensors=True,
-    )
-    pretrained_model = AutoModelForSequenceClassification.from_pretrained(
-        args.model,
-        num_labels=num_labels,
-        use_safetensors=True,
-    )
+        print("Preparing data..")
+        trainset, evalset, tokenizer = prepare_data(
+            actual_task,
+            args.pretrained_model_id,
+            validation_key,
+            sentence1_key,
+            sentence2_key,
+            args.max_length,
+        )
+        if model_name == "gpt2_base" and tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
+
+        print("Loading metric..")
+        metric = load_glue_metric(actual_task)
+
+        def compute_metrics(eval_pred):
+            predictions, labels = eval_pred
+            predictions = np.argmax(predictions, axis=-1)
+            return metric.compute(predictions=predictions, references=labels)
+
+        print("Loading victim and pretrained models..")
+        victim_model = load_text_model(model_config, args.weight_dir, num_labels, tokenizer)
+        pretrained_model = load_text_model(
+            model_config,
+            args.pretrained_model_id,
+            num_labels,
+            tokenizer,
+        )
+
     victim_state_dict = clone_state_dict_to_cpu(victim_model)
     pretrained_state_dict = clone_state_dict_to_cpu(pretrained_model)
 
@@ -790,6 +1113,7 @@ def main():
     target_delta_norm = compute_target_module_delta_norm(
         pretrained_state_dict,
         victim_state_dict,
+        target_patterns,
     )
     print(f"Target-module ||Delta W||_F: {target_delta_norm:.6f}")
 
@@ -801,12 +1125,28 @@ def main():
             args.recover_data_dir,
             f"recover_data_ratio_{ratio_tag}.json",
         )
-        if not os.path.exists(recover_data_path):
-            prepare_recover_data(victim_model, trainset, args.bs, recover_data_path, ratio=recover_ratio)
-        recover_dataset = load_dataset("json", data_files=recover_data_path)["train"]
+        if args.model_family == "vit":
+            ratio_recover_dir = os.path.join(args.recover_data_dir, f"ratio_{ratio_tag}")
+            if not os.path.exists(os.path.join(ratio_recover_dir, "recover_dataset.pth")):
+                vit_prepare_recover_data(
+                    victim_model,
+                    trainset,
+                    num_labels,
+                    tokenizer,
+                    ratio_recover_dir,
+                    ratio=recover_ratio,
+                )
+            recover_dataset = vit_load_finetune_dataloader(
+                ratio_recover_dir,
+                batch_size=args.bs,
+            )
+        else:
+            if not os.path.exists(recover_data_path):
+                prepare_recover_data(victim_model, trainset, args.bs, recover_data_path, ratio=recover_ratio)
+            recover_dataset = load_dataset("json", data_files=recover_data_path)["train"]
         print(f"recover_data prepared for ratio={recover_ratio}!")
 
-        if args.experiment_mode in {"adp", "all"}:
+        if args.experiment_mode in {"adp_control", "adp", "all"}:
             adp_values = parse_float_list(args.adp_values)
             orthogonal_scales = parse_float_list(args.orthogonal_scales)
             for adp_value in adp_values:
@@ -815,6 +1155,7 @@ def main():
                     pretrained_state_dict,
                     victim_state_dict,
                     base_alpha,
+                    target_patterns=target_patterns,
                 )
                 for orthogonal_scale in orthogonal_scales:
                     if orthogonal_scale == 0.0:
@@ -832,6 +1173,7 @@ def main():
                                 pretrained_state_dict,
                                 victim_state_dict,
                                 seed=direction_seed,
+                                target_patterns=target_patterns,
                             )
                             sampled_state_dict = apply_direction_to_state_dict(
                                 adp_base_state_dict,
@@ -848,6 +1190,7 @@ def main():
                             sampled_state_dict,
                             pretrained_state_dict,
                             victim_state_dict,
+                            target_patterns,
                         )
                         dir_tag = "none" if direction_id is None else str(direction_id)
                         run_name = (
@@ -863,7 +1206,7 @@ def main():
                             f"measured_adp={measured_adp_text}, "
                             f"distance={distance_to_victim:.6f}"
                         )
-                        pre_attack_metrics, post_attack_metrics = run_attack(
+                        pre_attack_metrics, post_attack_metrics = run_attack_for_family(
                             args=args,
                             run_name=run_name,
                             init_state_dict=sampled_state_dict,
@@ -892,6 +1235,7 @@ def main():
                             }
                         )
 
+        if args.experiment_mode in {"adp_curve", "adp", "all"}:
             adp_curve_values = build_scale_list_from_step(args.adp_curve_step)
             for adp_value in adp_curve_values:
                 base_alpha = 1.0 - adp_value
@@ -899,6 +1243,7 @@ def main():
                     pretrained_state_dict,
                     victim_state_dict,
                     base_alpha,
+                    target_patterns=target_patterns,
                 )
                 distance_to_victim = compute_weight_distance(
                     sampled_state_dict,
@@ -909,6 +1254,7 @@ def main():
                     sampled_state_dict,
                     pretrained_state_dict,
                     victim_state_dict,
+                    target_patterns,
                 )
                 run_name = (
                     f"ratio_{ratio_tag}_adp_curve_{str(adp_value).replace('.', '_')}"
@@ -921,7 +1267,7 @@ def main():
                     f"a={adp_value}, b=0.0, measured_adp={measured_adp_text}, "
                     f"distance={distance_to_victim:.6f}"
                 )
-                pre_attack_metrics, post_attack_metrics = run_attack(
+                pre_attack_metrics, post_attack_metrics = run_attack_for_family(
                     args=args,
                     run_name=run_name,
                     init_state_dict=sampled_state_dict,
@@ -964,6 +1310,7 @@ def main():
                     pretrained_state_dict,
                     victim_state_dict,
                     alpha,
+                    target_patterns=target_patterns,
                 )
                 distance_to_victim = compute_weight_distance(
                     sampled_state_dict,
@@ -978,7 +1325,7 @@ def main():
                     f"line_scale={line_scale}, alpha={alpha}, "
                     f"distance={distance_to_victim:.6f}"
                 )
-                pre_attack_metrics, post_attack_metrics = run_attack(
+                pre_attack_metrics, post_attack_metrics = run_attack_for_family(
                     args=args,
                     run_name=run_name,
                     init_state_dict=sampled_state_dict,
@@ -1011,6 +1358,7 @@ def main():
                 pretrained_state_dict,
                 victim_state_dict,
                 args.offline_base_alpha,
+                target_patterns=target_patterns,
             )
             for direction_id in range(args.offline_num_dirs):
                 direction_seed = args.seed + direction_id
@@ -1018,6 +1366,7 @@ def main():
                     pretrained_state_dict,
                     victim_state_dict,
                     seed=direction_seed,
+                    target_patterns=target_patterns,
                 )
                 for radius_scale in offline_radii:
                     radius_abs = radius_scale * base_distance
@@ -1040,7 +1389,7 @@ def main():
                         f"base_alpha={args.offline_base_alpha}, dir={direction_id}, "
                         f"radius_scale={radius_scale}, distance={distance_to_victim:.6f}"
                     )
-                    pre_attack_metrics, post_attack_metrics = run_attack(
+                    pre_attack_metrics, post_attack_metrics = run_attack_for_family(
                         args=args,
                         run_name=run_name,
                         init_state_dict=sampled_state_dict,
@@ -1073,16 +1422,19 @@ def main():
                 pretrained_state_dict,
                 victim_state_dict,
                 args.random_base_alpha,
+                target_patterns=target_patterns,
             )
             random_module_scales = compute_target_module_reference_scales(
                 pretrained_state_dict,
                 victim_state_dict,
+                target_patterns=target_patterns,
             )
             for direction_id in range(args.random_num_dirs):
                 direction_seed = args.seed + 10000 + direction_id
                 direction = sample_random_direction_on_target_modules(
                     random_base_state_dict,
                     seed=direction_seed,
+                    target_patterns=target_patterns,
                 )
                 for radius_scale in random_radii:
                     sampled_state_dict = apply_direction_with_module_scales(
@@ -1105,7 +1457,7 @@ def main():
                         f"base_alpha={args.random_base_alpha}, dir={direction_id}, "
                         f"radius_scale={radius_scale}, distance={distance_to_victim:.6f}"
                     )
-                    pre_attack_metrics, post_attack_metrics = run_attack(
+                    pre_attack_metrics, post_attack_metrics = run_attack_for_family(
                         args=args,
                         run_name=run_name,
                         init_state_dict=sampled_state_dict,
@@ -1143,11 +1495,13 @@ def main():
     summary["offline_base_alpha"] = args.offline_base_alpha
     summary["random_base_alpha"] = args.random_base_alpha
     summary["recover_ratios"] = recover_ratios
-    summary["adp_values"] = parse_float_list(args.adp_values)
-    summary["orthogonal_scales"] = parse_float_list(args.orthogonal_scales)
-    summary["orthogonal_num_dirs"] = args.orthogonal_num_dirs
-    summary["adp_curve_values"] = build_scale_list_from_step(args.adp_curve_step)
-    summary["adp_curve_step"] = args.adp_curve_step
+    if any(record["mode"] == "adp_control" for record in results):
+        summary["adp_values"] = parse_float_list(args.adp_values)
+        summary["orthogonal_scales"] = parse_float_list(args.orthogonal_scales)
+        summary["orthogonal_num_dirs"] = args.orthogonal_num_dirs
+    if any(record["mode"] == "adp_curve" for record in results):
+        summary["adp_curve_values"] = build_scale_list_from_step(args.adp_curve_step)
+        summary["adp_curve_step"] = args.adp_curve_step
     summary["line_scales"] = (
         build_scale_list_from_step(args.line_scale_step)
         if args.line_scale_step is not None

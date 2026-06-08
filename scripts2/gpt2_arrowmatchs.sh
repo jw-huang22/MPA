@@ -26,16 +26,16 @@ DATASET_LIST=(
     "sst2"
 )
 
-for DATASET in "${DATASET_LIST[@]}"; do
-    for OBFUS in "${OBFUS_LIST[@]}"; do
-        ./scripts/arrowmatch_gpt2.sh \
-            --gpus "$GPUS" \
-            --obfus "$OBFUS" \
-            --dataset "$DATASET" \
-            --restore_dir "$RESTORE_DIR" \
-            --rank_r "$RANK_R"
-    done
-done
+# for DATASET in "${DATASET_LIST[@]}"; do
+#     for OBFUS in "${OBFUS_LIST[@]}"; do
+#         ./scripts/arrowmatch_gpt2.sh \
+#             --gpus "$GPUS" \
+#             --obfus "$OBFUS" \
+#             --dataset "$DATASET" \
+#             --restore_dir "$RESTORE_DIR" \
+#             --rank_r "$RANK_R"
+#     done
+# done
 
 RANK_LIST=(
     # "1"
@@ -55,11 +55,22 @@ for RANK in "${RANK_LIST[@]}"; do
     for DATASET in "${DATASET_LIST[@]}"; do
         ./scripts/arrowmatch_gpt2.sh \
             --gpus "$GPUS" \
-            --obfus "AMO+arrowcloak" \
+            --obfus "AMO" \
             --dataset "$DATASET" \
             --restore_dir "$RESTORE_DIR" \
             --rank_r "$RANK"
     done
 done
+
+# for RANK in "${RANK_LIST[@]}"; do
+#     for DATASET in "${DATASET_LIST[@]}"; do
+#         ./scripts/arrowmatch_gpt2.sh \
+#             --gpus "$GPUS" \
+#             --obfus "AMO+arrowcloak" \
+#             --dataset "$DATASET" \
+#             --restore_dir "$RESTORE_DIR" \
+#             --rank_r "$RANK"
+#     done
+# done
 
 echo "所有脚本执行完毕！"

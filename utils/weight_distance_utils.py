@@ -33,6 +33,8 @@ def set_seed(seed=42):
 def prepare_data(task, model, validation_key, sentence1_key, sentence2_key, max_length=512):
     set_seed(42)
     tokenizer = AutoTokenizer.from_pretrained(model)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
     dataset = load_dataset("glue", task)
 
     def preprocess_function(examples):

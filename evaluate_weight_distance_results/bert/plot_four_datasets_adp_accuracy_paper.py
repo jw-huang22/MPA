@@ -43,15 +43,22 @@ def configure_matplotlib() -> None:
         {
             "figure.dpi": 160,
             "savefig.dpi": 400,
-            "font.family": "DejaVu Sans",
-            "font.size": 8,
-            "axes.labelsize": 8.5,
-            "xtick.labelsize": 7.5,
-            "ytick.labelsize": 7.5,
-            "legend.fontsize": 7.3,
-            "axes.linewidth": 0.7,
-            "xtick.major.width": 0.7,
-            "ytick.major.width": 0.7,
+            "font.family": "serif",
+            "font.serif": ["Times New Roman", "Times", "Nimbus Roman", "STIXGeneral"],
+            "mathtext.fontset": "stix",
+            "font.size": 7,
+            "axes.labelsize": 7,
+            "xtick.labelsize": 6.6,
+            "ytick.labelsize": 6.6,
+            "legend.fontsize": 6.2,
+            "axes.linewidth": 0.65,
+            "xtick.major.width": 0.65,
+            "ytick.major.width": 0.65,
+            "xtick.minor.width": 0.5,
+            "ytick.minor.width": 0.5,
+            "xtick.direction": "in",
+            "ytick.direction": "in",
+            "axes.unicode_minus": False,
             "pdf.fonttype": 42,
             "ps.fonttype": 42,
             "svg.fonttype": "none",
@@ -72,10 +79,10 @@ def plot(
     configure_matplotlib()
 
     colors = {
-        "mnli": "#2563EB",
-        "qnli": "#D97706",
-        "qqp": "#059669",
-        "sst2": "#DC2626",
+        "mnli": "#0072B2",
+        "qnli": "#D55E00",
+        "qqp": "#009E73",
+        "sst2": "#CC79A7",
     }
     markers = {
         "mnli": "o",
@@ -83,8 +90,14 @@ def plot(
         "qqp": "^",
         "sst2": "D",
     }
+    linestyles = {
+        "mnli": "-",
+        "qnli": "--",
+        "qqp": "-.",
+        "sst2": ":",
+    }
 
-    fig, ax = plt.subplots(figsize=(3.55, 2.35), constrained_layout=True)
+    fig, ax = plt.subplots(figsize=(1.55, 1.18), constrained_layout=True)
     ax.set_facecolor("white")
 
     all_xs = []
@@ -99,10 +112,12 @@ def plot(
             ys,
             color=colors.get(dataset, "#111827"),
             marker=markers.get(dataset, "o"),
-            markersize=3.3,
+            linestyle=linestyles.get(dataset, "-"),
+            markersize=2.25,
             markerfacecolor="white",
-            markeredgewidth=0.9,
-            linewidth=1.35,
+            markeredgewidth=0.65,
+            markevery=2,
+            linewidth=1.25,
             label=DATASET_LABELS.get(dataset, dataset.upper()),
             zorder=3,
         )
@@ -111,22 +126,31 @@ def plot(
     ax.set_xlim(min(all_xs) - x_padding, max(all_xs) + x_padding)
     ax.set_ylim(max(0.0, min(all_ys) - 0.035), min(1.0, max(all_ys) + 0.025))
     ax.set_xlabel("ADP")
-    ax.set_ylabel("model-stealing accuracy")
+    ax.set_ylabel("Acc.")
 
-    ax.xaxis.set_major_locator(mticker.MultipleLocator(0.2))
+    ax.xaxis.set_major_locator(mticker.MultipleLocator(0.5))
     ax.xaxis.set_major_formatter(mticker.FormatStrFormatter("%.1f"))
-    ax.yaxis.set_major_locator(mticker.MaxNLocator(nbins=6))
+    ax.yaxis.set_major_locator(mticker.MaxNLocator(nbins=4))
     ax.yaxis.set_major_formatter(mticker.FormatStrFormatter("%.2f"))
-    ax.grid(axis="y", color="#D8D8D8", linewidth=0.55, linestyle=(0, (2.2, 2.2)))
-    ax.grid(axis="x", color="#ECECEC", linewidth=0.45, linestyle=(0, (2.2, 2.2)))
+    ax.grid(axis="y", color="#D9D9D9", linewidth=0.35, linestyle=(0, (1.0, 2.0)), alpha=0.6)
+    ax.grid(axis="x", color="#E8E8E8", linewidth=0.3, linestyle=(0, (1.0, 2.2)), alpha=0.5)
     ax.set_axisbelow(True)
 
     for spine in ("top", "right"):
         ax.spines[spine].set_visible(False)
-    ax.spines["left"].set_color("#222222")
-    ax.spines["bottom"].set_color("#222222")
-    ax.tick_params(axis="both", which="major", length=3.0, color="#222222")
-    ax.legend(frameon=False, loc="lower left", handlelength=1.6, borderaxespad=0.2)
+    ax.spines["left"].set_color("#303030")
+    ax.spines["bottom"].set_color("#303030")
+    ax.tick_params(axis="both", which="major", length=2.4, color="#303030", pad=1.5)
+    ax.legend(
+        frameon=False,
+        loc="lower left",
+        ncol=2,
+        handlelength=1.25,
+        handletextpad=0.25,
+        columnspacing=0.45,
+        borderaxespad=0.12,
+        labelspacing=0.15,
+    )
 
     written = []
     output_stem.parent.mkdir(parents=True, exist_ok=True)

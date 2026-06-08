@@ -24,15 +24,15 @@ DATASET_LIST=(
     "food101"
 )
 
-for DATASET in "${DATASET_LIST[@]}"; do
-    for OBFUS in "${OBFUS_LIST[@]}"; do
-        ./scripts/arrowmatch_vit.sh \
-            --obfus "$OBFUS" \
-            --dataset "$DATASET" \
-            --restore_dir "$RESTORE_DIR" \
-            --rank_r "$RANK_R"
-    done
-done
+# for DATASET in "${DATASET_LIST[@]}"; do
+#     for OBFUS in "${OBFUS_LIST[@]}"; do
+#         ./scripts/arrowmatch_vit.sh \
+#             --obfus "$OBFUS" \
+#             --dataset "$DATASET" \
+#             --restore_dir "$RESTORE_DIR" \
+#             --rank_r "$RANK_R"
+#     done
+# done
 
 RANK_LIST=(
     # "1"
@@ -48,10 +48,21 @@ RANK_LIST=(
     # "768"
 )
 
+# for DATASET in "${DATASET_LIST[@]}"; do
+#     for RANK in "${RANK_LIST[@]}"; do
+#         ./scripts/arrowmatch_vit.sh \
+#             --obfus AMO \
+#             --dataset "$DATASET" \
+#             --restore_dir "$RESTORE_DIR" \
+#             --rank_r "$RANK"
+#     done
+# done
+
+
 for DATASET in "${DATASET_LIST[@]}"; do
     for RANK in "${RANK_LIST[@]}"; do
         ./scripts/arrowmatch_vit.sh \
-            --obfus AMO \
+            --obfus "AMO+arrowcloak" \
             --dataset "$DATASET" \
             --restore_dir "$RESTORE_DIR" \
             --rank_r "$RANK"

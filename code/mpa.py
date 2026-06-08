@@ -59,7 +59,7 @@ else:
 args.weight_dir = f"{args.weight_dir}/{model_name}/{args.dataset}/final_checkpoint"
 args.weight_dir_tsqp = f"{args.weight_dir_tsqp}/{model_name}/{args.dataset}/final_checkpoint"
 args.restore_dir = f"{args.restore_dir}/{model_name}/{args.obfus}/{args.dataset}"
-if args.obfus == "AMO":
+if "AMO" in args.obfus:
     args.restore_dir = f"{args.restore_dir}/r{args.rank_r}"
 args.recover_data_dir = f"{args.recover_data_dir}/{model_name}/{args.dataset}"
 

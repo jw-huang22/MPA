@@ -21,6 +21,7 @@ OBFUS_METHODS = (
     "tsqp",
     "LoRO",
     "AMO",
+    "AMO+arrowcloak",
     "obfuscatune",
     "groupcover",
     "twinshield",
@@ -131,6 +132,8 @@ def continuous_param_count_piece(model_name, obfus, name, shape, rank_r, group_s
         return 8 * (n + m)
     if obfus == "AMO":
         return rank_r * (n + m)
+    if obfus == "AMO+arrowcloak":
+        return rank_r * (n + m) + (n + 2 * m if model_name in {"gpt2", "gpt2_xl"} else m + 2 * n)
     if obfus == "obfuscatune":
         return orthogonal_dof(m)
     if obfus == "groupcover":

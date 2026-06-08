@@ -1,6 +1,7 @@
 data/
 
 evaluate_results*
+evaluate_weight_distance_results*
 
 results*
 

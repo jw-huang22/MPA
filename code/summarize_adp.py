@@ -1,8 +1,41 @@
 import argparse
 import csv
 import math
+import pickle
+import re
 from collections import defaultdict
 from pathlib import Path
+
+import numpy as np
+
+
+MODEL_DIR = {
+    "bert": "bert",
+    "gpt2": "gpt2_base",
+    "gpt2_base": "gpt2_base",
+    "gpt2_xl": "gpt2_xl",
+    "vit": "ViT",
+    "ViT": "ViT",
+    "ViT_augreg": "ViT_augreg",
+}
+
+PERM_OBFUS = {
+    "translinkguard",
+    "tempo",
+    "shadownet",
+    "groupcover",
+    "twinshield",
+    "twinshield'",
+    "arrowcloak",
+    "AMO+arrowcloak",
+    "AMO+shadownet",
+}
+
+PERM_KEY_PAIRS = (
+    ("obfus_perm", "restore_perm"),
+    ("obfus_permutations", "restore_permutations"),
+    ("obfus_permutation", "restore_permutation"),
+)
 
 
 def parse_float(value):
@@ -30,8 +63,138 @@ def rank_sort_value(rank):
         return -1
 
 
-def summarize(input_path, merge_datasets=False, group_by_rank="auto"):
+def to_numpy_leaf(value):
+    if hasattr(value, "detach"):
+        value = value.detach()
+    if hasattr(value, "cpu"):
+        value = value.cpu()
+    if hasattr(value, "numpy"):
+        value = value.numpy()
+    return np.asarray(value)
+
+
+def count_perm_leaves(value):
+    if isinstance(value, dict):
+        return sum(count_perm_leaves(v) for v in value.values())
+    return 1
+
+
+def accum_perm_recovery(obfus_perm, restore_perm):
+    if isinstance(obfus_perm, dict):
+        if not isinstance(restore_perm, dict):
+            return 0, count_perm_leaves(obfus_perm)
+        matched = total = 0
+        for key, value in obfus_perm.items():
+            if key not in restore_perm:
+                total += count_perm_leaves(value)
+                continue
+            m, t = accum_perm_recovery(value, restore_perm[key])
+            matched += m
+            total += t
+        return matched, total
+    return int(np.array_equal(to_numpy_leaf(obfus_perm), to_numpy_leaf(restore_perm))), 1
+
+
+def obfus_has_permutation(obfus):
+    if obfus in PERM_OBFUS:
+        return True
+    return any(part in PERM_OBFUS for part in str(obfus).split("+"))
+
+
+def attack_extras_path(row, restore_dir):
+    restore_path = row.get("restore_path")
+    if restore_path:
+        path = Path(restore_path)
+        if not path.exists() and not path.is_absolute():
+            mpa_path = Path("MPA") / path
+            if mpa_path.exists():
+                path = mpa_path
+        if path.name == "pre_finetune_checkpoint":
+            return path / "attack_extras.pkl"
+
+    model_dir = MODEL_DIR.get(row["model"], row["model"])
+    base = Path(restore_dir) / model_dir / row["obfus"] / row["dataset"]
+    if not base.exists() and not base.is_absolute():
+        mpa_base = Path("MPA") / base
+        if mpa_base.exists():
+            base = mpa_base
+    rank_r = row.get("rank_r", "")
+    if "AMO" in row["obfus"] and rank_r not in ("", None):
+        base = base / f"r{rank_r}"
+    return base / "pre_finetune_checkpoint" / "attack_extras.pkl"
+
+
+def load_perm_maps(row, restore_dir):
+    path = attack_extras_path(row, restore_dir)
+    if not path.exists():
+        return None
+    try:
+        with path.open("rb") as f:
+            extras = pickle.load(f)
+    except Exception:
+        return None
+
+    for obfus_key, restore_key in PERM_KEY_PAIRS:
+        if obfus_key not in extras or restore_key not in extras:
+            continue
+        return extras[obfus_key], extras[restore_key]
+    return None
+
+
+def layer_key_candidates(model, layer):
+    base_layer, sep, tag = str(layer).partition(":")
+    candidates = [base_layer, layer]
+
+    if model == "bert":
+        match = re.search(r"bert\.encoder\.layer\.(\d+)\.", base_layer)
+        if match:
+            candidates.append(match.group(1))
+    elif model in {"gpt2", "gpt2_base", "gpt2_xl"}:
+        match = re.search(r"transformer\.h\.(\d+)\.", base_layer)
+        if match:
+            candidates.append(match.group(1))
+    elif model in {"vit", "ViT", "ViT_augreg"}:
+        block_match = re.search(r"(blocks\.\d+)", base_layer)
+        if block_match:
+            block = block_match.group(1)
+            candidates.extend([block, f"{block}.attn", f"{block}.mlp"])
+
+    seen = set()
+    ordered = []
+    for candidate in candidates:
+        if candidate and candidate not in seen:
+            seen.add(candidate)
+            ordered.append(candidate)
+    return ordered, tag if sep else None
+
+
+def pick_layer_perm(perm_map, model, layer):
+    candidates, tag = layer_key_candidates(model, layer)
+    for candidate in candidates:
+        if not isinstance(perm_map, dict) or candidate not in perm_map:
+            continue
+        value = perm_map[candidate]
+        if tag and isinstance(value, dict) and tag in value:
+            return value[tag]
+        return value
+    return None
+
+
+def permutation_restored_for_row(row, perm_maps):
+    if perm_maps is None:
+        return False
+    obfus_map, restore_map = perm_maps
+    obfus_perm = pick_layer_perm(obfus_map, row["model"], row.get("layer", ""))
+    restore_perm = pick_layer_perm(restore_map, row["model"], row.get("layer", ""))
+    if obfus_perm is None or restore_perm is None:
+        return False
+    matched, total = accum_perm_recovery(obfus_perm, restore_perm)
+    return total > 0 and matched == total
+
+
+def summarize(input_path, merge_datasets=False, group_by_rank="auto", restore_dir="results/our_results"):
     groups = defaultdict(lambda: {"adp_sum": 0.0, "adp_count": 0, "ratio_sum": 0.0, "ratio_count": 0, "adp_over_ratio_sum": 0.0, "adp_over_ratio_count": 0})
+    perm_cache = {}
     with input_path.open(newline="") as f:
         reader = csv.DictReader(f)
         has_rank = reader.fieldnames is not None and "rank_r" in reader.fieldnames
@@ -40,6 +203,19 @@ def summarize(input_path, merge_datasets=False, group_by_rank="auto"):
         else:
             include_rank = group_by_rank == "always" and has_rank
         for row in reader:
+            if obfus_has_permutation(row["obfus"]):
+                perm_key = (
+                    row["model"],
+                    row["dataset"],
+                    row["obfus"],
+                    row.get("rank_r", ""),
+                    row.get("restore_stage", "pre_finetune_checkpoint"),
+                    row.get("restore_path", ""),
+                )
+                if perm_key not in perm_cache:
+                    perm_cache[perm_key] = load_perm_maps(row, restore_dir)
+                if not permutation_restored_for_row(row, perm_cache[perm_key]):
+                    continue
             if merge_datasets:
                 key = (row["model"], row["obfus"])
             else:
@@ -88,11 +264,11 @@ def summarize(input_path, merge_datasets=False, group_by_rank="auto"):
             "dataset": dataset,
             "obfus": obfus,
             "num_adp_layers": stat["adp_count"],
-            "num_ratio_layers": stat["ratio_count"],
+            # "num_ratio_layers": stat["ratio_count"],
             "adp_mean": format_number(adp_mean),
-            "k_over_nm_mean": format_number(ratio_mean),
-            "adp_over_k_over_nm_mean": format_number(adp_over_ratio_mean),
-            "adp_mean_over_k_over_nm_mean": format_number(adp_mean / ratio_mean) if ratio_mean not in (0, "", None) else "",
+            # "k_over_nm_mean": format_number(ratio_mean),
+            # "adp_over_k_over_nm_mean": format_number(adp_over_ratio_mean),
+            # "adp_mean_over_k_over_nm_mean": format_number(adp_mean / ratio_mean) if ratio_mean not in (0, "", None) else "",
         }
         if include_rank:
             out["rank_r"] = rank_r
@@ -138,7 +314,7 @@ def print_table(rows):
     for row in rows:
         item = {}
         for h in headers:
-            value = str(row[h])
+            value = str(row.get(h, ""))
             item[h] = value
             widths[h] = max(widths[h], len(value))
         printable.append(item)
@@ -152,6 +328,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Summarize ADP CSV by model and obfuscation method.")
     parser.add_argument("--input", default="results/adp_results/adp.csv")
     parser.add_argument("--output", default="results/adp_results/adp_summary_by_model_obfus.csv")
+    parser.add_argument("--restore_dir", default="results/our_results", help="Directory that contains pre_finetune_checkpoint/attack_extras.pkl files.")
     parser.add_argument("--merge_datasets", action="store_true", help="Group only by model and obfuscation method.")
     parser.add_argument(
         "--group_by_rank",
@@ -166,7 +343,7 @@ def main():
     args = parse_args()
     input_path = Path(args.input)
     output_path = Path(args.output)
-    rows = summarize(input_path, merge_datasets=args.merge_datasets, group_by_rank=args.group_by_rank)
+    rows = summarize(input_path, merge_datasets=args.merge_datasets, group_by_rank=args.group_by_rank, restore_dir=args.restore_dir)
     write_rows(output_path, rows)
     print_table(rows)
     print(f"\nWrote summary to {output_path}")

@@ -11,16 +11,16 @@ OBFUS_LIST=(
     # "shadownet"
     # "LoRO"
     # "obfuscatune"
-    # "groupcover"
+    "groupcover"
     # "twinshield"
-    "arrowcloak"
+    # "arrowcloak"
     # "amo+arrowcloak"
 )
 DATASET_LIST=(
-    "mnli"
+    # "mnli"
     "qqp"
     "qnli"
-    "sst2"
+    # "sst2"
 )
 RESTORE_DIR="results/our_results"
 
